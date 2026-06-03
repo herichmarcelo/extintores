@@ -1,27 +1,12 @@
-import withPWAInit from "next-pwa";
-
-const withPWA = withPWAInit({
-  dest: "public",
-  disable: process.env.NODE_ENV === "development",
-  register: true,
-  skipWaiting: true,
-});
-
-const nextConfig: import('next').NextConfig = {
-  // Silencia o aviso do Turbopack 
-  experimental : { 
-    turbopack : {}, 
-    workerThreads: false,
-    cpus: 1,
-  }, 
-  // Ignora erros de linting durante o build na Vercel (economiza muita RAM) 
-  eslint : { 
-    ignoreDuringBuilds: true , 
-  }, 
-  // Ignora erros de TypeScript durante o build na Vercel (economiza muita RAM) 
-  typescript : { 
-    ignoreBuildErrors: true , 
-  }, 
-};
-
-export default withPWA(nextConfig);
+import type { NextConfig } from "next"; 
+ 
+ const nextConfig: NextConfig = { 
+   // Mantemos isso para economizar memória na Vercel 
+   typescript: { 
+     ignoreBuildErrors: true, 
+   }, 
+   // No Next.js 16, o turbopack fica na raiz da configuração 
+   turbopack: {}, 
+ }; 
+ 
+ export default nextConfig; 
