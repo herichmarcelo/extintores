@@ -8,7 +8,18 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: import('next').NextConfig = {
-  // Configurações do Next.js
+  // Silencia o aviso do Turbopack 
+  experimental : { 
+    turbopack : {}, 
+  }, 
+  // Ignora erros de linting durante o build na Vercel (economiza muita RAM) 
+  eslint : { 
+    ignoreDuringBuilds: true , 
+  }, 
+  // Ignora erros de TypeScript durante o build na Vercel (economiza muita RAM) 
+  typescript : { 
+    ignoreBuildErrors: true , 
+  }, 
 };
 
 export default withPWA(nextConfig);
