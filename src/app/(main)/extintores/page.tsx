@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 export const dynamic = "force-dynamic";
 
 import { Button } from "@/components/ui/button"
-import { ClipboardCheck, MapPin, Calendar, Camera, Flame, Search, Filter, AlertCircle, CheckCircle2, Clock } from "lucide-react"
+import { ClipboardCheck, MapPin, Calendar, Camera, Flame, Search, Filter, AlertCircle, CheckCircle2, Clock, FileText } from "lucide-react"
 import Link from "next/link"
 import { ExtintorForm } from "@/components/forms/extintor-form"
 import { Input } from "@/components/ui/input"
@@ -144,17 +144,30 @@ export default async function ExtintoresPage() {
                   </div>
                 </div>
 
-                {/* Botão de Ação */} 
-                <Button 
-                  nativeButton={false}
-                  className="w-full h-12 bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-100 hover:border-slate-200 rounded-xl font-black text-xs uppercase tracking-widest transition-all gap-2 shadow-sm hover:shadow-md"
-                  render={
-                    <Link href={`/extintores/inspecao/${extintor.id}`}>
-                      <ClipboardCheck className="h-4 w-4" style={{ color: statusColor }} />
-                      Realizar Inspeção
-                    </Link>
-                  }
-                />
+                {/* Botões de Ação */} 
+                <div className="flex flex-col gap-2">
+                  <Button 
+                    nativeButton={false}
+                    variant="outline"
+                    className="w-full h-12 bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-100 hover:border-slate-200 rounded-xl font-black text-xs uppercase tracking-widest transition-all gap-2 shadow-sm hover:shadow-md"
+                    render={
+                      <Link href={`/extintores/historico/${extintor.id}`}>
+                        <FileText className="h-4 w-4 text-blue-500" />
+                        Relatório do Extintor
+                      </Link>
+                    }
+                  />
+                  <Button 
+                    nativeButton={false}
+                    className="w-full h-12 bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-100 hover:border-slate-200 rounded-xl font-black text-xs uppercase tracking-widest transition-all gap-2 shadow-sm hover:shadow-md"
+                    render={
+                      <Link href={`/extintores/inspecao/${extintor.id}`}>
+                        <ClipboardCheck className="h-4 w-4" style={{ color: statusColor }} />
+                        Realizar Inspeção
+                      </Link>
+                    }
+                  />
+                </div>
               </div>
             </div>
           )

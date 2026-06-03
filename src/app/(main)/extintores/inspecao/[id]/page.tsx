@@ -7,7 +7,7 @@
  import { Textarea } from "@/components/ui/textarea" 
  import { Button } from "@/components/ui/button" 
  import { Checkbox } from "@/components/ui/checkbox" 
- import { Camera, ChevronLeft, Save, Loader2, CheckCircle2, AlertCircle, Flame, MapPin, Info, X, ClipboardCheck } from "lucide-react" 
+ import { Camera, ChevronLeft, Save, Loader2, CheckCircle2, AlertCircle, Flame, MapPin, Info, X, ClipboardCheck, User } from "lucide-react" 
  import { createInspecao } from "@/app/actions/extintores" 
  import { motion, AnimatePresence } from "framer-motion" 
  
@@ -86,21 +86,34 @@
        className="max-w-2xl mx-auto space-y-6 pb-10 px-4 sm:px-0" 
      > 
        {/* Cabeçalho */} 
-       <div className="flex items-center gap-3 pt-4"> 
-         <Button 
-           variant="ghost" 
-           size="icon" 
-           onClick={() => !isSubmitting && router.push("/extintores")} 
-           disabled={isSubmitting} 
-           className="h-10 w-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" 
-         > 
-           <ChevronLeft className="h-5 w-5" /> 
-         </Button> 
-         <div> 
-           <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-500"> 
-             Nova Inspeção 
-           </h1> 
-           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Rotina de Vistoria</p> 
+       <div className="flex items-center justify-between pt-4"> 
+         <div className="flex items-center gap-3"> 
+           <Button 
+             variant="ghost" 
+             size="icon" 
+             onClick={() => !isSubmitting && router.push("/extintores")} 
+             disabled={isSubmitting} 
+             className="h-10 w-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" 
+           > 
+             <ChevronLeft className="h-5 w-5" /> 
+           </Button> 
+           <div> 
+             <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-500"> 
+               Nova Inspeção 
+             </h1> 
+             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Rotina de Vistoria</p> 
+           </div> 
+         </div> 
+ 
+         {/* Informações do Usuário Logado */} 
+         <div className="flex items-center gap-3"> 
+           <div className="text-right hidden sm:block"> 
+             <p className="text-[13px] font-black text-slate-800 uppercase tracking-tighter leading-none">INSPETOR BELLO</p> 
+             <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-0.5">SESMT ALIMENTOS</p> 
+           </div> 
+           <div className="h-10 w-10 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 shadow-sm"> 
+             <User className="h-6 w-6" /> 
+           </div> 
          </div> 
        </div> 
  

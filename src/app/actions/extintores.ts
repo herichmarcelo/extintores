@@ -35,7 +35,9 @@ export async function createExtintor(formData: FormData) {
       },
     });
 
+    revalidatePath('/unidades');
     revalidatePath('/extintores');
+    revalidatePath('/dashboard');
     return { success: true };
   } catch (error) {
     console.error('Error creating extintor:', error);
@@ -137,5 +139,88 @@ export async function getExtintores() {
   } catch (error) {
     console.error('Error fetching extintores:', error);
     return [];
+  }
+}
+
+export async function getExtintorComHistorico(id: string) {
+  try {
+    return await prisma.extintor.findUnique({
+      where: { id },
+      include: {
+        unidade: true,
+        inspecoes: {
+          include: {
+            usuario: true,
+          },
+          orderBy: { dataInspecao: 'desc' },
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching extintor history:', error);
+    return null;
+  }
+}
+
+export async function getDashboardData() {
+  try {
+    const unidades = await prisma.unidade.findMany({
+      include: {
+        extintores: {
+          include: {
+            inspecoes: {
+              orderBy: { dataInspecao: 'desc' },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    const totalExtintores = unidades.reduce((acc, u) => acc + u.extintores.length, 0);
+    
+    let aprovados = 0;
+    let reprovados = 0;
+
+    const dataPorUnidade = unidades.map(u => {
+      let uConforme = 0;
+      let uNaoConforme = 0;
+
+      u.extintores.forEach(e => {
+        const ultimaInspecao = e.inspecoes[0];
+        if (ultimaInspecao) {
+          if (ultimaInspecao.status === 'Conforme') {
+            uConforme++;
+            aprovados++;
+          } else {
+            uNaoConforme++;
+            reprovados++;
+          }
+        } else {
+          // Se não tem inspeção, consideramos pendente/não conforme para fins de dashboard? 
+          // Ou apenas não somamos. Vamos somar como não conforme para alertar.
+          uNaoConforme++;
+          reprovados++;
+        }
+      });
+
+      return {
+        name: u.nome,
+        total: u.extintores.length,
+        conforme: uConforme,
+        naoConforme: uNaoConforme,
+      };
+    });
+
+    return {
+      totalExtintores,
+      aprovados,
+      reprovados,
+      dataPorUnidade,
+      taxaEficiencia: totalExtintores > 0 ? Math.round((aprovados / totalExtintores) * 100) : 0
+    };
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error);
+    return null;
   }
 }

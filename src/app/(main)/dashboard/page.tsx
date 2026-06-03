@@ -12,16 +12,10 @@ import {
   PieChart,
   Pie,
 } from "recharts"
-import { Flame, CheckCircle2, TrendingUp, ShieldAlert, Map, Activity } from "lucide-react"
+import { Flame, CheckCircle2, TrendingUp, ShieldAlert, Map, Activity, Loader2 } from "lucide-react"
 import { motion } from "framer-motion"
-
-const data = [
-  { name: "Matriz", total: 400, conforme: 380, naoConforme: 20 },
-  { name: "Unidade II", total: 300, conforme: 280, naoConforme: 20 },
-  { name: "Unidade III", total: 200, conforme: 190, naoConforme: 10 },
-  { name: "CD Itaquiraí", total: 278, conforme: 260, naoConforme: 18 },
-  { name: "Fábrica Ração", total: 189, conforme: 170, naoConforme: 19 },
-]
+import { useEffect, useState } from "react"
+import { getDashboardData } from "@/app/actions/extintores"
 
 // Cores vibrantes estilo "Bombeiro / Alerta / Neon"
 const COLORS = {
@@ -30,11 +24,6 @@ const COLORS = {
   greenNeon: "#00e676", // Verde Segurança/Aprovado
   blueNeon: "#2979ff", // Azul SLA/Informação
 }
-
-const pieData = [
-  { name: "Conforme", value: 1180, color: COLORS.greenNeon },
-  { name: "Não Conforme", value: 65, color: COLORS.redNeon },
-]
 
 const container = {
   hidden: { opacity: 0 },
@@ -50,6 +39,38 @@ const item = {
 }
 
 export default function DashboardPage() {
+  const [data, setData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadData() {
+      const result = await getDashboardData()
+      setData(result)
+      setIsLoading(false)
+    }
+    loadData()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-red-500" />
+      </div>
+    )
+  }
+
+  const stats = [
+    { title: "Total Extintores", value: data?.totalExtintores || 0, icon: Flame, color: COLORS.orangeNeon, trend: "Ativo", bgShadow: "shadow-[0_8px_30px_rgba(255,109,0,0.15)]" },
+    { title: "Aprovados", value: data?.aprovados || 0, icon: CheckCircle2, color: COLORS.greenNeon, trend: `${data?.taxaEficiencia || 0}%`, bgShadow: "shadow-[0_8px_30px_rgba(0,230,118,0.15)]" },
+    { title: "Reprovados", value: data?.reprovados || 0, icon: ShieldAlert, color: COLORS.redNeon, trend: "Atenção", bgShadow: "shadow-[0_8px_30px_rgba(255,23,68,0.15)]" },
+    { title: "SLA de Correção", value: "48h", icon: TrendingUp, color: COLORS.blueNeon, trend: "Meta ok", bgShadow: "shadow-[0_8px_30_rgba(41,121,255,0.15)]" },
+  ]
+
+  const pieData = [
+    { name: "Conforme", value: data?.aprovados || 0, color: COLORS.greenNeon },
+    { name: "Não Conforme", value: data?.reprovados || 0, color: COLORS.redNeon },
+  ]
+
   return (
     <motion.div 
       variants={container}
@@ -76,12 +97,7 @@ export default function DashboardPage() {
 
       {/* Cards de Estatísticas */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {[
-          { title: "Total Extintores", value: "1.245", icon: Flame, color: COLORS.orangeNeon, trend: "+12%", bgShadow: "shadow-[0_8px_30px_rgba(255,109,0,0.15)]" },
-          { title: "Aprovados", value: "1.180", icon: CheckCircle2, color: COLORS.greenNeon, trend: "94.7%", bgShadow: "shadow-[0_8px_30px_rgba(0,230,118,0.15)]" },
-          { title: "Reprovados", value: "65", icon: ShieldAlert, color: COLORS.redNeon, trend: "-2%", bgShadow: "shadow-[0_8px_30px_rgba(255,23,68,0.15)]" },
-          { title: "SLA de Correção", value: "48h", icon: TrendingUp, color: COLORS.blueNeon, trend: "Meta ok", bgShadow: "shadow-[0_8px_30px_rgba(41,121,255,0.15)]" },
-        ].map((stat, i) => (
+        {stats.map((stat, i) => (
           <motion.div key={i} variants={item}>
             <Card className={`relative overflow-hidden border border-slate-100 ${stat.bgShadow} hover:-translate-y-1 transition-all duration-300 group bg-white`}>
               <div 
@@ -106,7 +122,7 @@ export default function DashboardPage() {
                   >
                     {stat.trend}
                   </span>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">vs. anterior</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tempo Real</span>
                 </div>
               </CardContent>
             </Card>
@@ -130,7 +146,7 @@ export default function DashboardPage() {
             <CardContent className="p-6">
               <div className="h-[350px] min-h-[350px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <BarChart data={data?.dataPorUnidade || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor={COLORS.greenNeon} stopOpacity={1}/>
@@ -182,7 +198,7 @@ export default function DashboardPage() {
                 {/* Centro do Gráfico */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
                   <div className="bg-white w-32 h-32 rounded-full flex flex-col items-center justify-center shadow-[0_0_30px_rgba(0,230,118,0.2)]">
-                    <span className="text-5xl font-black text-slate-900" style={{ color: COLORS.greenNeon, filter: `drop-shadow(0px 0px 4px ${COLORS.greenNeon}40)` }}>94%</span>
+                    <span className="text-5xl font-black text-slate-900" style={{ color: COLORS.greenNeon, filter: `drop-shadow(0px 0px 4px ${COLORS.greenNeon}40)` }}>{data?.taxaEficiencia || 0}%</span>
                     <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest mt-1">Global</span>
                   </div>
                 </div>
@@ -198,35 +214,32 @@ export default function DashboardPage() {
                       paddingAngle={8}
                       dataKey="value"
                       stroke="none"
-                      cornerRadius={8}
                     >
                       {pieData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={entry.color} 
-                          style={{ filter: `drop-shadow(0px 4px 10px ${entry.color}60)` }}
-                        />
+                        <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip 
-                      contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.2)', fontWeight: 'bold'}}
-                      itemStyle={{color: '#333'}}
-                    />
+                    <Tooltip />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
 
-              {/* Legendas Embaixo */}
-              <div className="grid grid-cols-2 gap-4 w-full mt-6">
-                {pieData.map((item) => (
-                  <div key={item.name} className="flex flex-col items-center p-5 rounded-2xl bg-slate-50 border border-slate-100 transition-all hover:bg-white hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color, boxShadow: `0 0 10px ${item.color}` }} />
-                      <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">{item.name}</span>
-                    </div>
-                    <span className="text-3xl font-black text-slate-900">{item.value}</span>
+              {/* Legenda Customizada */}
+              <div className="grid grid-cols-2 gap-4 w-full mt-8">
+                <div className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: COLORS.greenNeon }} />
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Conforme</span>
                   </div>
-                ))}
+                  <span className="text-xl font-black text-slate-800">{data?.aprovados || 0}</span>
+                </div>
+                <div className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: COLORS.redNeon }} />
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Crítico</span>
+                  </div>
+                  <span className="text-xl font-black text-slate-800">{data?.reprovados || 0}</span>
+                </div>
               </div>
             </CardContent>
           </Card>
