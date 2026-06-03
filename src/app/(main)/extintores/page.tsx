@@ -144,16 +144,17 @@ export default async function ExtintoresPage() {
                   </div>
                 </div>
 
-                {/* Botão de Ação */}
+                {/* Botão de Ação */} 
                 <Button 
-                  asChild 
+                  nativeButton={false}
                   className="w-full h-12 bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-100 hover:border-slate-200 rounded-xl font-black text-xs uppercase tracking-widest transition-all gap-2 shadow-sm hover:shadow-md"
-                >
-                  <Link href={`/extintores/inspecao/${extintor.id}`}>
-                    <ClipboardCheck className="h-4 w-4" style={{ color: statusColor }} />
-                    Realizar Inspeção
-                  </Link>
-                </Button>
+                  render={
+                    <Link href={`/extintores/inspecao/${extintor.id}`}>
+                      <ClipboardCheck className="h-4 w-4" style={{ color: statusColor }} />
+                      Realizar Inspeção
+                    </Link>
+                  }
+                />
               </div>
             </div>
           )

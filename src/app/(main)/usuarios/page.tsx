@@ -125,14 +125,17 @@
          
          {/* Modal de Cadastro de Usuário */} 
          <Dialog open={open} onOpenChange={setOpen}> 
-           <DialogTrigger asChild>
-             <Button
-               className="sm:w-auto w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white font-black uppercase tracking-widest rounded-full px-8 h-12 shadow-[0_8px_30px_rgba(79,70,229,0.3)] hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2" 
-             > 
-               <UserPlus className="h-5 w-5" /> 
-               Novo Usuário 
-             </Button>
-           </DialogTrigger> 
+           <DialogTrigger 
+             nativeButton={false}
+             render={
+               <Button
+                 className="sm:w-auto w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white font-black uppercase tracking-widest rounded-full px-8 h-12 shadow-[0_8px_30px_rgba(79,70,229,0.3)] hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2" 
+               > 
+                 <UserPlus className="h-5 w-5" /> 
+                 Novo Usuário 
+               </Button>
+             }
+           /> 
            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] border-none shadow-2xl p-8 bg-white"> 
              <form onSubmit={handleSubmit} className="space-y-6"> 
                <DialogHeader> 

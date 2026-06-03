@@ -1,195 +1,269 @@
-"use client"
-
-import { use, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Camera, ChevronLeft, Save, Loader2 } from "lucide-react"
-import Link from "next/link"
-import { createInspecao } from "@/app/actions/extintores"
-
-export default function InspecaoExtintorPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  const router = useRouter()
-  const [isSubmitting, setIsLoading] = useState(false)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const url = URL.createObjectURL(file)
-      setPreviewUrl(url)
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setIsLoading(true)
-
-    const formData = new FormData(e.currentTarget)
-    formData.append('extintorId', id)
-    formData.append('usuarioId', 'temp-user-id') // TODO: Pegar do Auth real
-    
-    // Determinar status global baseado nos itens
-    const items = ['manometro', 'lacre', 'sinalizacao', 'mangueira', 'pintura', 'seloInmetro']
-    const hasNonConformity = items.some(item => formData.get(item) === 'nao-conforme')
-    formData.append('status', hasNonConformity ? 'Não Conforme' : 'Conforme')
-
-    const result = await createInspecao(formData)
-
-    if (result.success) {
-      router.push("/extintores")
-    } else {
-      alert(result.error)
-      setIsLoading(false)
-    }
-  }
-
-  return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-10">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => !isSubmitting && router.push("/extintores")} disabled={isSubmitting}>
-          <Link href="/extintores">
-            <ChevronLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold tracking-tight">Inspeção de Extintor</h1>
-      </div>
-
-      <Card className="border-none shadow-xl bg-white">
-        <CardHeader className="bg-slate-50 border-b border-slate-100">
-          <CardTitle className="text-lg font-black text-slate-800 uppercase tracking-tighter">Equipamento</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6 grid grid-cols-2 gap-6">
-          <div className="space-y-1">
-            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Código</Label>
-            <p className="font-black text-slate-900">EXT-001</p>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Localização</Label>
-            <p className="font-bold text-slate-700">Almoxarifado</p>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipo</Label>
-            <p className="font-bold text-slate-700">PQS - ABC</p>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Capacidade</Label>
-            <p className="font-bold text-slate-700">6kg</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Card className="border-none shadow-xl overflow-hidden">
-          <CardHeader className="bg-[#9d1d36] text-white">
-            <CardTitle className="text-lg font-black uppercase tracking-widest">Checklist</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6 pt-6">
-            <div className="grid gap-4">
-              {[
-                { id: "manometro", label: "Manômetro em área verde?" },
-                { id: "lacre", label: "Lacre intacto?" },
-                { id: "sinalizacao", label: "Sinalização adequada?" },
-                { id: "mangueira", label: "Mangueira sem rachaduras?" },
-                { id: "pintura", label: "Pintura em bom estado?" },
-                { id: "seloInmetro", label: "Selo Inmetro presente?" },
-              ].map((item) => (
-                <div key={item.id} className="flex items-center justify-between border-b border-slate-50 pb-4 last:border-0 last:pb-0">
-                  <Label htmlFor={item.id} className="text-sm font-bold text-slate-600 cursor-pointer">
-                    {item.label}
-                  </Label>
-                  <Select name={item.id} defaultValue="conforme">
-                    <SelectTrigger className="w-[140px] h-10 rounded-xl border-slate-200 font-bold">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="conforme" className="font-bold text-green-600">Conforme</SelectItem>
-                      <SelectItem value="nao-conforme" className="font-bold text-red-600">Não Conforme</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              ))}
-            </div>
-
-            <div className="space-y-3 pt-4">
-              <Label htmlFor="observacao" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Observações</Label>
-              <Textarea
-                id="observacao"
-                name="observacao"
-                placeholder="Descreva aqui qualquer irregularidade encontrada..."
-                className="min-h-[120px] rounded-2xl border-slate-100 bg-slate-50/50 focus:bg-white transition-all"
-              />
-            </div>
-
-            <div className="space-y-3">
-              <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Evidência Fotográfica</Label>
-              <div className="flex items-center justify-center w-full">
-                <label className="relative flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-[2rem] cursor-pointer bg-slate-50 hover:bg-slate-100 border-slate-200 transition-all overflow-hidden group">
-                  {previewUrl ? (
-                    <img src={previewUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <div className="p-4 rounded-2xl bg-white shadow-lg mb-3 group-hover:scale-110 transition-transform">
-                        <Camera className="w-8 h-8 text-[#9d1d36]" />
-                      </div>
-                      <p className="mb-2 text-sm text-slate-500 font-bold">
-                        Tirar Foto da Inspeção
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">Captura de Ambiente Ativa</p>
-                    </div>
-                  )}
-                  <input 
-                    type="file" 
-                    name="foto"
-                    className="hidden" 
-                    accept="image/*" 
-                    capture="environment" 
-                    onChange={handleFileChange}
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-3 pt-6 border-t border-slate-100">
-              <Checkbox id="assinatura" name="assinatura" required className="h-6 w-6 rounded-lg border-slate-300 data-[state=checked]:bg-[#9d1d36]" />
-              <Label htmlFor="assinatura" className="text-xs font-bold text-slate-500 leading-tight peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Confirmo que realizei a inspeção física e as informações são verdadeiras.
-              </Label>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex gap-4">
-          <Button 
-            type="submit" 
-            disabled={isSubmitting}
-            className="flex-1 h-14 rounded-2xl bello-gradient hover:opacity-90 text-lg font-black uppercase tracking-widest shadow-2xl shadow-[#9d1d36]/20 transition-all"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Salvando...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-5 w-5" />
-                Finalizar
-              </>
-            )}
-          </Button>
-        </div>
-      </form>
-    </div>
-  )
-}
+"use client" 
+ 
+ import { use, useState } from "react" 
+ import { useRouter } from "next/navigation" 
+ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card" 
+ import { Label } from "@/components/ui/label" 
+ import { Textarea } from "@/components/ui/textarea" 
+ import { Button } from "@/components/ui/button" 
+ import { Checkbox } from "@/components/ui/checkbox" 
+ import { Camera, ChevronLeft, Save, Loader2, CheckCircle2, AlertCircle, Flame, MapPin, Info, X, ClipboardCheck } from "lucide-react" 
+ import { createInspecao } from "@/app/actions/extintores" 
+ import { motion, AnimatePresence } from "framer-motion" 
+ 
+ const container = { 
+   hidden: { opacity: 0 }, 
+   show: { opacity: 1, transition: { staggerChildren: 0.1 } } 
+ } 
+ 
+ const itemAnim = { 
+   hidden: { y: 20, opacity: 0 }, 
+   show: { y: 0, opacity: 1 } 
+ } 
+ 
+ export default function InspecaoExtintorPage({ params }: { params: Promise<{ id: string }> }) { 
+   const { id } = use(params) 
+   const router = useRouter() 
+   const [isSubmitting, setIsLoading] = useState(false) 
+   
+   // Estado para armazenar as fotos individuais de cada pergunta 
+   const [itemPhotos, setItemPhotos] = useState<Record<string, string>>({}) 
+ 
+   // Gerencia o upload de fotos por item 
+   const handleItemPhotoChange = (itemId: string, e: React.ChangeEvent<HTMLInputElement>) => { 
+     const file = e.target.files?.[0] 
+     if (file) { 
+       const url = URL.createObjectURL(file) 
+       setItemPhotos(prev => ({ ...prev, [itemId]: url })) 
+     } 
+   } 
+ 
+   // Remove a foto de um item específico 
+   const removeItemPhoto = (itemId: string) => { 
+     setItemPhotos(prev => { 
+       const newState = { ...prev } 
+       delete newState[itemId] 
+       return newState 
+     }) 
+   } 
+ 
+   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => { 
+     e.preventDefault() 
+     setIsLoading(true) 
+ 
+     const formData = new FormData(e.currentTarget) 
+     formData.append('extintorId', id) 
+     formData.append('usuarioId', 'temp-user-id') 
+     
+     const items = ['manometro', 'lacre', 'sinalizacao', 'mangueira', 'pintura', 'seloInmetro'] 
+     const hasNonConformity = items.some(item => formData.get(item) === 'nao-conforme') 
+     formData.append('status', hasNonConformity ? 'Não Conforme' : 'Conforme') 
+ 
+     const result = await createInspecao(formData) 
+ 
+     if (result.success) { 
+       router.push("/extintores") 
+     } else { 
+       alert(result.error) 
+       setIsLoading(false) 
+     } 
+   } 
+ 
+   const checklistItems = [ 
+     { id: "manometro", label: "Manômetro em área verde?" }, 
+     { id: "lacre", label: "Lacre de segurança intacto?" }, 
+     { id: "sinalizacao", label: "Sinalização de solo/parede adequada?" }, 
+     { id: "mangueira", label: "Mangueira livre de rachaduras?" }, 
+     { id: "pintura", label: "Cilindro e pintura em bom estado?" }, 
+     { id: "seloInmetro", label: "Selo do Inmetro legível e presente?" }, 
+   ] 
+ 
+   return ( 
+     <motion.div 
+       variants={container} 
+       initial="hidden" 
+       animate="show" 
+       className="max-w-2xl mx-auto space-y-6 pb-10 px-4 sm:px-0" 
+     > 
+       {/* Cabeçalho */} 
+       <div className="flex items-center gap-3 pt-4"> 
+         <Button 
+           variant="ghost" 
+           size="icon" 
+           onClick={() => !isSubmitting && router.push("/extintores")} 
+           disabled={isSubmitting} 
+           className="h-10 w-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" 
+         > 
+           <ChevronLeft className="h-5 w-5" /> 
+         </Button> 
+         <div> 
+           <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-500"> 
+             Nova Inspeção 
+           </h1> 
+           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Rotina de Vistoria</p> 
+         </div> 
+       </div> 
+ 
+       {/* Card Resumo do Equipamento */} 
+       <motion.div variants={itemAnim}> 
+         <Card className="border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] rounded-[2rem] overflow-hidden bg-white relative"> 
+           <div className="absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full opacity-[0.03] bg-[#ff1744] blur-2xl pointer-events-none" /> 
+           <CardContent className="p-6"> 
+             <div className="flex items-center gap-4 mb-6 pb-6 border-b border-slate-100"> 
+               <div className="h-14 w-14 rounded-2xl bg-red-50 flex items-center justify-center border border-red-100 shadow-sm shrink-0"> 
+                 <Flame className="h-7 w-7 text-[#ff1744]" /> 
+               </div> 
+               <div> 
+                 <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Equipamento</Label> 
+                 <h2 className="text-2xl font-black text-slate-800 tracking-tighter">EXT-001</h2> 
+               </div> 
+             </div> 
+             
+             <div className="grid grid-cols-2 gap-y-4 gap-x-4"> 
+               <div className="flex flex-col gap-1"> 
+                 <span className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest"> 
+                   <MapPin className="h-3 w-3 text-blue-500" /> Localização 
+                 </span> 
+                 <span className="text-sm font-bold text-slate-700">Almoxarifado</span> 
+               </div> 
+               <div className="flex flex-col gap-1"> 
+                 <span className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest"> 
+                   <Info className="h-3 w-3 text-orange-500" /> Tipo 
+                 </span> 
+                 <span className="text-sm font-bold text-slate-700">PQS - ABC</span> 
+               </div> 
+             </div> 
+           </CardContent> 
+         </Card> 
+       </motion.div> 
+ 
+       {/* Formulário Principal */} 
+       <form onSubmit={handleSubmit} className="space-y-6"> 
+         <motion.div variants={itemAnim}> 
+           <Card className="border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] rounded-[2rem] overflow-hidden bg-white"> 
+             <CardHeader className="bg-slate-50 border-b border-slate-100 pb-4 pt-6 px-6"> 
+               <CardTitle className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2"> 
+                 <ClipboardCheck className="h-5 w-5 text-[#ff1744]" /> 
+                 Checklist Interativo 
+               </CardTitle> 
+             </CardHeader> 
+             <CardContent className="space-y-6 pt-6 px-4 sm:px-6"> 
+               
+               {/* Checklist Dinâmico com Fotos Individuais */} 
+               <div className="grid gap-6"> 
+                 {checklistItems.map((item) => ( 
+                   <div key={item.id} className="flex flex-col gap-3 pb-6 border-b border-slate-100/80 last:border-0 last:pb-0"> 
+                     <Label className="text-[13px] font-bold text-slate-800 leading-snug"> 
+                       {item.label} 
+                     </Label> 
+                     
+                     {/* Linha de Botões (Ok / Falha / Câmera) */} 
+                     <div className="flex gap-2 h-12"> 
+                       <label className="flex-1 cursor-pointer"> 
+                         <input type="radio" name={item.id} value="conforme" defaultChecked className="peer hidden" /> 
+                         <div className="h-full flex items-center justify-center gap-2 rounded-xl border-2 border-slate-100 bg-slate-50 peer-checked:border-[#00e676] peer-checked:bg-[#00e676]/10 peer-checked:text-[#00c853] text-slate-400 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 shadow-sm"> 
+                           <CheckCircle2 className="w-4 h-4" /> Ok 
+                         </div> 
+                       </label> 
+ 
+                       <label className="flex-1 cursor-pointer"> 
+                         <input type="radio" name={item.id} value="nao-conforme" className="peer hidden" /> 
+                         <div className="h-full flex items-center justify-center gap-2 rounded-xl border-2 border-slate-100 bg-slate-50 peer-checked:border-[#ff1744] peer-checked:bg-[#ff1744]/10 peer-checked:text-[#ff1744] text-slate-400 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 shadow-sm"> 
+                           <AlertCircle className="w-4 h-4" /> Falha 
+                         </div> 
+                       </label> 
+ 
+                       {/* Botão de Câmera da Pergunta */} 
+                       <label className="w-16 shrink-0 cursor-pointer h-full flex items-center justify-center rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-all active:scale-95 shadow-sm relative overflow-hidden"> 
+                         {/* Se tiver foto, o ícone da câmera fica azul para indicar */} 
+                         <Camera className={`w-5 h-5 transition-colors ${itemPhotos[item.id] ? "text-blue-600" : ""}`} /> 
+                         <input 
+                           type="file" 
+                           name={`foto_${item.id}`} // O nome da foto vai ser "foto_manometro", etc. 
+                           className="hidden" 
+                           accept="image/*" 
+                           capture="environment" 
+                           onChange={(e) => handleItemPhotoChange(item.id, e)} 
+                         /> 
+                       </label> 
+                     </div> 
+ 
+                     {/* Exibição da Miniatura da Foto Tirada */} 
+                     <AnimatePresence> 
+                       {itemPhotos[item.id] && ( 
+                         <motion.div 
+                           initial={{ opacity: 0, height: 0, marginTop: 0 }} 
+                           animate={{ opacity: 1, height: "auto", marginTop: 8 }} 
+                           exit={{ opacity: 0, height: 0, marginTop: 0 }} 
+                           className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-slate-200 shadow-sm group" 
+                         > 
+                           <img src={itemPhotos[item.id]} alt={`Evidência ${item.label}`} className="w-full h-full object-cover" /> 
+                           
+                           {/* Botão de Remover a Foto */} 
+                           <button 
+                             type="button" 
+                             onClick={() => removeItemPhoto(item.id)} 
+                             className="absolute top-1 right-1 bg-red-500/90 hover:bg-red-600 text-white p-1 rounded-lg backdrop-blur-sm transition-colors" 
+                           > 
+                             <X className="w-4 h-4" /> 
+                           </button> 
+                         </motion.div> 
+                       )} 
+                     </AnimatePresence> 
+                   </div> 
+                 ))} 
+               </div> 
+ 
+               {/* Campo de Observações Gerais */} 
+               <div className="space-y-3 pt-6 border-t border-slate-100"> 
+                 <Label htmlFor="observacao" className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1"> 
+                   Observações Gerais 
+                 </Label> 
+                 <Textarea 
+                   id="observacao" 
+                   name="observacao" 
+                   placeholder="Se necessário, adicione observações gerais sobre o equipamento..." 
+                   className="min-h-[100px] rounded-2xl border-slate-200 bg-slate-50 focus:bg-white focus-visible:ring-[#ff1744] focus-visible:ring-offset-2 transition-all font-medium text-sm resize-none p-4" 
+                 /> 
+               </div> 
+ 
+               {/* Termo de Assinatura */} 
+               <div className="flex items-start space-x-3 pt-6 border-t border-slate-100 bg-slate-50/50 -mx-6 px-6 pb-6 rounded-b-[2rem]"> 
+                 <Checkbox 
+                   id="assinatura" 
+                   name="assinatura" 
+                   required 
+                   className="h-6 w-6 mt-0.5 rounded-lg border-slate-300 data-[state=checked]:bg-[#00e676] data-[state=checked]:border-[#00e676]" 
+                 /> 
+                 <Label htmlFor="assinatura" className="text-[13px] font-bold text-slate-600 leading-relaxed cursor-pointer select-none"> 
+                   Confirmo que realizei a inspeção física in-loco e as informações preenchidas são verdadeiras. 
+                 </Label> 
+               </div> 
+             </CardContent> 
+           </Card> 
+         </motion.div> 
+ 
+         {/* Botão Flutuante de Ação */} 
+         <motion.div variants={itemAnim} className="pb-8"> 
+           <Button 
+             type="submit" 
+             disabled={isSubmitting} 
+             className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#ff1744] to-[#ff6d00] hover:opacity-90 text-white text-sm font-black uppercase tracking-widest shadow-[0_8px_30px_rgba(255,23,68,0.3)] hover:-translate-y-1 transition-all duration-300" 
+           > 
+             {isSubmitting ? ( 
+               <> 
+                 <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 
+                 Registrando Inspeção... 
+               </> 
+             ) : ( 
+               <> 
+                 <Save className="mr-2 h-5 w-5" /> 
+                 Finalizar Vistoria 
+               </> 
+             )} 
+           </Button> 
+         </motion.div> 
+       </form> 
+     </motion.div> 
+   ) 
+ } 
