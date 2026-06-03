@@ -1,0 +1,104 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Usuario {
+  id        String   @id @default(uuid())
+  nome      String
+  email     String   @unique
+  senha     String
+  perfil    String   // Administrador, SESMT, Inspetor, Gestor
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inspecoesExtintor InspecaoExtintor[]
+  inspecoesHidrante InspecaoHidrante[]
+}
+
+model Unidade {
+  id     String @id @default(uuid())
+  nome   String
+  cidade String
+  estado String
+
+  extintores Extintor[]
+  hidrantes  Hidrante[]
+}
+
+model Extintor {
+  id            String   @id @default(uuid())
+  codigo        String   @unique
+  localizacao   String
+  tipo          String
+  capacidade    String
+  validadeCarga DateTime
+  foto          String?  // Foto do equipamento cadastrado
+
+  unidadeId String
+  unidade   Unidade @relation(fields: [unidadeId], references: [id])
+
+  inspecoes InspecaoExtintor[]
+}
+
+model Hidrante {
+  id          String @id @default(uuid())
+  codigo      String @unique
+  localizacao String
+  foto        String?  // Foto do equipamento cadastrado
+
+  unidadeId String
+  unidade   Unidade @relation(fields: [unidadeId], references: [id])
+
+  inspecoes InspecaoHidrante[]
+}
+
+model InspecaoExtintor {
+  id String @id @default(uuid())
+
+  extintorId String
+  extintor   Extintor @relation(fields: [extintorId], references: [id])
+
+  sinalizacao Boolean
+  manometro   Boolean
+  lacre       Boolean
+  mangueira   Boolean
+  pintura     Boolean
+  seloInmetro Boolean
+
+  observacao   String?
+  foto         String?
+  status       String // Conforme, Não Conforme
+  dataInspecao DateTime @default(now())
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+}
+
+model InspecaoHidrante {
+  id String @id @default(uuid())
+
+  hidranteId String
+  hidrante   Hidrante @relation(fields: [hidranteId], references: [id])
+
+  caixa       Boolean
+  mangueira   Boolean
+  esguicho    Boolean
+  sinalizacao Boolean
+
+  observacao   String?
+  foto         String?
+  status       String // Conforme, Não Conforme
+  dataInspecao DateTime @default(now())
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+}
