@@ -27,6 +27,13 @@
   --color-background: #fdfcf9;
   --color-foreground: #1a1a1a;
 
+  --color-sidebar: #1f1d1a;
+  --color-sidebar-foreground: #e8ddbd;
+  --color-sidebar-primary: #9d1d36;
+  --color-sidebar-accent: white;
+  --color-sidebar-border: rgba(255, 255, 255, 0.05);
+  --color-sidebar-ring: #9d1d36;
+
   --color-popover: #ffffff;
   --color-popover-foreground: #1a1a1a;
   --color-muted-foreground: #64748b;
