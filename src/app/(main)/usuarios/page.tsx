@@ -1,6 +1,6 @@
 "use client" 
  
- import { useState } from "react" 
+ import { useState, useEffect } from "react" 
  import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card" 
  import { Button } from "@/components/ui/button" 
  import { Input } from "@/components/ui/input" 
@@ -23,42 +23,44 @@
    Eye, 
    ClipboardCheck, 
    MoreVertical, 
-   ShieldCheck 
+   ShieldCheck,
+   Loader2,
+   Lock
  } from "lucide-react" 
  import { motion } from "framer-motion" 
+ import { getUsuarios, createUsuario, deleteUsuario } from "@/app/actions/usuarios"
  
  // Definição de Cores das Hierarquias 
  const ROLES = { 
-   BOMBEIRO: { 
+   Administrador: { 
      nome: "Bombeiro (Admin)", 
      cor: "#ff1744", // Red Neon 
      bgShadow: "shadow-[0_8px_30px_rgba(255,23,68,0.15)]", 
      icon: ShieldAlert, 
      descricao: "Controle total do sistema" 
    }, 
-   TECNICO: { 
+   Gestor: { 
      nome: "Téc. Segurança", 
      cor: "#7c3aed", // Violet Neon 
      bgShadow: "shadow-[0_8px_30px_rgba(124,58,237,0.15)]", 
      icon: Eye, 
      descricao: "Auditoria e visualização" 
    }, 
-   BRIGADISTA: { 
+   Inspetor: { 
      nome: "Brigadista", 
      cor: "#00e676", // Green Neon 
      bgShadow: "shadow-[0_8px_30px_rgba(0,230,118,0.15)]", 
      icon: ClipboardCheck, 
      descricao: "Exclusivo para vistorias" 
+   },
+   SESMT: { 
+     nome: "SESMT", 
+     cor: "#2979ff", // Blue Neon 
+     bgShadow: "shadow-[0_8px_30px_rgba(41,121,255,0.15)]", 
+     icon: ShieldCheck, 
+     descricao: "Gestão de Segurança" 
    } 
  } 
- 
- // Mock de Usuários 
- const usuariosMock = [ 
-   { id: 1, nome: "Herich Marcelo", email: "admin@belloalimentos.com", role: "BOMBEIRO", status: "Ativo" }, 
-   { id: 2, nome: "João Inspetor", email: "joao.brigada@belloalimentos.com", role: "BRIGADISTA", status: "Ativo" }, 
-   { id: 3, nome: "Maria Auditora", email: "maria.seguranca@belloalimentos.com", role: "TECNICO", status: "Ativo" }, 
-   { id: 4, nome: "Carlos Vistoria", email: "carlos.b@belloalimentos.com", role: "BRIGADISTA", status: "Inativo" }, 
- ] 
  
  const container = { 
    hidden: { opacity: 0 }, 
@@ -73,15 +75,34 @@
  export default function UsuariosPage() { 
    const [open, setOpen] = useState(false) 
    const [isSubmitting, setIsSubmitting] = useState(false) 
+   const [usuarios, setUsuarios] = useState<any[]>([])
+   const [isLoading, setIsLoading] = useState(true)
+
+   const loadUsuarios = async () => {
+     setIsLoading(true)
+     const data = await getUsuarios()
+     setUsuarios(data)
+     setIsLoading(false)
+   }
+
+   useEffect(() => {
+     loadUsuarios()
+   }, [])
  
-   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => { 
+   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => { 
      e.preventDefault() 
      setIsSubmitting(true) 
-     // Simulação de delay de API 
-     setTimeout(() => { 
-       setIsSubmitting(false) 
-       setOpen(false) 
-     }, 1000) 
+     
+     const formData = new FormData(e.currentTarget)
+     const result = await createUsuario(formData)
+
+     if (result.success) {
+       setOpen(false)
+       loadUsuarios()
+     } else {
+       alert(result.error)
+     }
+     setIsSubmitting(false)
    } 
  
    return ( 
@@ -104,11 +125,13 @@
          
          {/* Modal de Cadastro de Usuário */} 
          <Dialog open={open} onOpenChange={setOpen}> 
-           <DialogTrigger 
-             className="sm:w-auto w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white font-black uppercase tracking-widest rounded-full px-8 h-12 shadow-[0_8px_30px_rgba(79,70,229,0.3)] hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2" 
-           > 
-             <UserPlus className="h-5 w-5" /> 
-             Novo Usuário 
+           <DialogTrigger asChild>
+             <Button
+               className="sm:w-auto w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white font-black uppercase tracking-widest rounded-full px-8 h-12 shadow-[0_8px_30px_rgba(79,70,229,0.3)] hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2" 
+             > 
+               <UserPlus className="h-5 w-5" /> 
+               Novo Usuário 
+             </Button>
            </DialogTrigger> 
            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] border-none shadow-2xl p-8 bg-white"> 
              <form onSubmit={handleSubmit} className="space-y-6"> 
@@ -127,22 +150,30 @@
                <div className="space-y-5 mt-4"> 
                  <div className="space-y-2"> 
                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Completo</label> 
-                   <Input placeholder="Ex: Herich Marcelo" required className="rounded-xl border-slate-200 bg-slate-50 font-bold h-12 focus-visible:ring-blue-600 transition-all" /> 
+                   <Input name="nome" placeholder="Ex: Herich Marcelo" required className="rounded-xl border-slate-200 bg-slate-50 font-bold h-12 focus-visible:ring-blue-600 transition-all" /> 
                  </div> 
                  
                  <div className="space-y-2"> 
                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">E-mail Corporativo</label> 
-                   <Input type="email" placeholder="usuario@belloalimentos.com" required className="rounded-xl border-slate-200 bg-slate-50 font-bold h-12 focus-visible:ring-blue-600 transition-all" /> 
+                   <Input name="email" type="email" placeholder="usuario@belloalimentos.com" required className="rounded-xl border-slate-200 bg-slate-50 font-bold h-12 focus-visible:ring-blue-600 transition-all" /> 
+                 </div> 
+
+                 <div className="space-y-2"> 
+                   <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Senha de Acesso</label> 
+                   <div className="relative">
+                     <Lock className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+                     <Input name="senha" type="password" placeholder="••••••••" required className="pl-12 rounded-xl border-slate-200 bg-slate-50 font-bold h-12 focus-visible:ring-blue-600 transition-all" /> 
+                   </div>
                  </div> 
  
                  <div className="space-y-2"> 
                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Nível de Hierarquia (Cargo)</label> 
-                   {/* Select nativo customizado com Tailwind */} 
-                   <select required className="w-full rounded-xl border border-slate-200 bg-slate-50 font-bold h-12 px-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"> 
+                   <select name="perfil" required className="w-full rounded-xl border border-slate-200 bg-slate-50 font-bold h-12 px-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"> 
                      <option value="" disabled selected>Selecione a permissão...</option> 
-                     <option value="BOMBEIRO">🔥 Bombeiro (Admin - Acesso Total)</option> 
-                     <option value="TECNICO">👁️ Técnico de Segurança (Auditor - Somente Leitura)</option> 
-                     <option value="BRIGADISTA">📋 Brigadista (Acesso restrito a Vistorias)</option> 
+                     <option value="Administrador">🔥 Bombeiro (Admin - Acesso Total)</option> 
+                     <option value="Gestor">👁️ Técnico de Segurança (Auditor - Somente Leitura)</option> 
+                     <option value="Inspetor">📋 Brigadista (Acesso restrito a Vistorias)</option> 
+                     <option value="SESMT">🛡️ SESMT (Gestão de Segurança)</option> 
                    </select> 
                  </div> 
                </div> 
@@ -153,7 +184,7 @@
                    disabled={isSubmitting} 
                    className="w-full h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white text-sm font-black uppercase tracking-widest shadow-[0_8px_25px_rgba(79,70,229,0.3)] transition-all" 
                  > 
-                   {isSubmitting ? "Cadastrando..." : "Confirmar Acesso"} 
+                   {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Confirmar Acesso"} 
                  </Button> 
                </DialogFooter> 
              </form> 
@@ -162,7 +193,7 @@
        </div> 
  
        {/* Cards Explicativos de Hierarquia */} 
-       <div className="grid gap-6 md:grid-cols-3"> 
+       <div className="grid gap-6 md:grid-cols-4"> 
          {Object.entries(ROLES).map(([key, role]) => ( 
            <motion.div key={key} variants={item}> 
              <Card className={`relative overflow-hidden border border-slate-100 ${role.bgShadow} hover:-translate-y-1 transition-all duration-300 group bg-white rounded-3xl h-full`}> 
@@ -189,9 +220,8 @@
          ))} 
        </div> 
  
-       {/* Lista de Usuários (Estilo Grid de Cards Moderno) */} 
+       {/* Lista de Usuários */} 
        <motion.div variants={item} className="space-y-4"> 
-         {/* Barra de Filtros */} 
          <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-4 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.02)]"> 
            <div className="relative flex-1 w-full group"> 
              <Search className="absolute left-4 top-3 h-5 w-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" /> 
@@ -206,18 +236,20 @@
            </Button> 
          </div> 
  
-         {/* Tabela de Usuários Responsiva */} 
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4"> 
-           {usuariosMock.map((user) => { 
-             const roleInfo = ROLES[user.role as keyof typeof ROLES]; 
-             const isActive = user.status === "Ativo"; 
+         <div className="grid grid-cols-1 gap-4"> 
+           {isLoading ? (
+             <div className="flex items-center justify-center py-12">
+               <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
+             </div>
+           ) : usuarios.map((user) => { 
+             const roleInfo = ROLES[user.perfil as keyof typeof ROLES] || ROLES.Inspetor; 
+             const isActive = true; // No schema atual não temos campo status, assumimos ativo
              
              return ( 
                <div key={user.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 lg:p-4 bg-white rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all gap-4"> 
                  
-                 {/* Info Principal do Usuário */} 
                  <div className="flex items-center gap-4 w-full lg:w-1/3"> 
-                   <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-600 text-lg shrink-0 border border-slate-200"> 
+                   <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-600 text-lg shrink-0 border border-slate-200 uppercase"> 
                      {user.nome.charAt(0)} 
                    </div> 
                    <div className="truncate"> 
@@ -226,7 +258,6 @@
                    </div> 
                  </div> 
  
-                 {/* Badge de Hierarquia (Role) */} 
                  <div className="w-full lg:w-1/3 flex lg:justify-center"> 
                    <Badge 
                      className="border-none font-black text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm" 
@@ -237,22 +268,37 @@
                    </Badge> 
                  </div> 
  
-                 {/* Status e Ações */} 
                  <div className="w-full lg:w-1/3 flex items-center justify-between lg:justify-end gap-4"> 
                    <div className="flex items-center gap-2"> 
                      <div className={`h-2.5 w-2.5 rounded-full ${isActive ? 'bg-[#00e676] shadow-[0_0_8px_#00e676]' : 'bg-slate-300'}`} /> 
                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest"> 
-                       {user.status} 
+                       Ativo 
                      </span> 
                    </div> 
-                   <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-slate-100 text-slate-400 transition-colors"> 
+                   <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-10 w-10 rounded-xl hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                    onClick={async () => {
+                      if (confirm('Deseja realmente excluir este usuário?')) {
+                        await deleteUsuario(user.id);
+                        loadUsuarios();
+                      }
+                    }}
+                   > 
                      <MoreVertical className="h-5 w-5" /> 
                    </Button> 
                  </div> 
- 
                </div> 
              ) 
-           })} 
+           })}
+
+           {!isLoading && usuarios.length === 0 && (
+             <div className="py-24 text-center bg-white rounded-[2rem] border-2 border-dashed border-slate-200">
+               <Users className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+               <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Nenhum usuário cadastrado</p>
+             </div>
+           )}
          </div> 
        </motion.div> 
      </motion.div> 
