@@ -11,6 +11,8 @@ const nextConfig: import('next').NextConfig = {
   // Silencia o aviso do Turbopack 
   experimental : { 
     turbopack : {}, 
+    workerThreads: false,
+    cpus: 1,
   }, 
   // Ignora erros de linting durante o build na Vercel (economiza muita RAM) 
   eslint : { 

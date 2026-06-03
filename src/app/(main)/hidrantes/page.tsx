@@ -1,5 +1,8 @@
 import { getHidrantes } from "@/app/actions/hidrantes" 
  import { Badge } from "@/components/ui/badge" 
+
+ export const dynamic = "force-dynamic";
+
  import { Button } from "@/components/ui/button" 
  import { ClipboardCheck, MapPin, Camera, Search, Filter, AlertCircle, CheckCircle2, Clock, Droplet, Gauge, Ruler } from "lucide-react" 
  import Link from "next/link" 

@@ -1,5 +1,8 @@
 import { getExtintores } from "@/app/actions/extintores"
 import { Badge } from "@/components/ui/badge"
+
+export const dynamic = "force-dynamic";
+
 import { Button } from "@/components/ui/button"
 import { ClipboardCheck, MapPin, Calendar, Camera, Flame, Search, Filter, AlertCircle, CheckCircle2, Clock } from "lucide-react"
 import Link from "next/link"
