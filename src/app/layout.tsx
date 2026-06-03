@@ -16,6 +16,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Bello Alimentos - Gestão de Extintores",
   description: "Sistema de inspeção e controle de extintores e hidrantes",
+  manifest: "/manifest.json",
+  themeColor: "#dc2626",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Bello SESMT",
+  },
 };
 
 export default function RootLayout({
