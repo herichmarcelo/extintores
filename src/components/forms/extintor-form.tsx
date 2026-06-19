@@ -32,7 +32,7 @@ export function ExtintorForm() {
 
   useEffect(() => {
     if (open) {
-      getUnidades().then(setUnidades)
+      getUnidades().then((result) => setUnidades(result.data))
     }
   }, [open])
 

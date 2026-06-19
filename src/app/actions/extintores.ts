@@ -1,6 +1,7 @@
 'use server'
 
 import prisma from '@/lib/prisma';
+import { formatDatabaseError } from '@/lib/db-error';
 import { uploadImage } from '@/lib/cloudinary';
 import { revalidatePath } from 'next/cache';
 
@@ -115,12 +116,16 @@ export async function createInspecao(formData: FormData) {
 
 export async function getUnidades() {
   try {
-    return await prisma.unidade.findMany({
+    const data = await prisma.unidade.findMany({
       orderBy: { nome: 'asc' },
+      include: {
+        _count: { select: { extintores: true, hidrantes: true } },
+      },
     });
+    return { data, error: undefined as string | undefined };
   } catch (error) {
     console.error('Error fetching unidades:', error);
-    return [];
+    return { data: [], error: formatDatabaseError(error) };
   }
 }
 

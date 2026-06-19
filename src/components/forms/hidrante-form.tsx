@@ -32,7 +32,7 @@ export function HidranteForm() {
 
   useEffect(() => {
     if (open) {
-      getUnidades().then(setUnidades)
+      getUnidades().then((result) => setUnidades(result.data))
     }
   }, [open])
 
