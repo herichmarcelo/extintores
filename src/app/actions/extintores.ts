@@ -70,6 +70,7 @@ export async function createInspecao(formData: FormData) {
 
     const status = formData.get('status') as string;
     const observacao = formData.get('observacao') as string;
+    const dataInspecao = new Date(formData.get('dataInspecao') as string);
     const fotoFile = formData.get('foto') as File | null;
 
     const sinalizacao = formData.get('sinalizacao') === 'conforme';
@@ -101,7 +102,7 @@ export async function createInspecao(formData: FormData) {
         mangueira,
         pintura,
         seloInmetro,
-        dataInspecao: new Date(),
+        dataInspecao,
       },
     });
 

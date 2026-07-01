@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import { Camera, ChevronLeft, Save, Loader2, CheckCircle2, AlertCircle, Flame, MapPin, Info, X, ClipboardCheck, User } from "lucide-react"
 import { createInspecao, getExtintorComHistorico } from "@/app/actions/extintores"
 import { motion, AnimatePresence } from "framer-motion"
@@ -196,6 +197,21 @@ export default function InspecaoExtintorPage({ params }: { params: Promise<{ id:
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 pt-6 px-4 sm:px-6">
+              
+              {/* Campo de Data da Inspeção */}
+              <div className="space-y-2 pb-6 border-b border-slate-100">
+                <Label htmlFor="dataInspecao" className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                  Data da Inspeção
+                </Label>
+                <Input
+                  id="dataInspecao"
+                  name="dataInspecao"
+                  type="date"
+                  required
+                  defaultValue={new Date().toISOString().split('T')[0]}
+                  className="h-12 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus-visible:ring-[#B11226] focus-visible:ring-offset-2 transition-all font-medium"
+                />
+              </div>
               
               {/* Checklist Dinâmico com Fotos Individuais */}
               <div className="grid gap-6">
