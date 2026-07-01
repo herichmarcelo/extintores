@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
 import { Camera, ChevronLeft, Save, Loader2, CheckCircle2, AlertCircle, Flame, MapPin, Info, X, ClipboardCheck, User } from "lucide-react"
 import { createInspecao, getExtintorComHistorico } from "@/app/actions/extintores"
 import { motion, AnimatePresence } from "framer-motion"
+import { DatePicker } from "@/components/date-picker"
+import { format } from "date-fns"
 
 const container = {
   hidden: { opacity: 0 },
@@ -28,6 +29,7 @@ export default function InspecaoExtintorPage({ params }: { params: Promise<{ id:
   const [isSubmitting, setIsLoading] = useState(false)
   const [extintor, setExtintor] = useState<any>(null)
   const [isDataLoading, setIsDataLoading] = useState(true)
+  const [dataInspecao, setDataInspecao] = useState<Date | null>(new Date())
 
   // Estado para armazenar as fotos individuais de cada pergunta
   const [itemPhotos, setItemPhotos] = useState<Record<string, string>>({})
@@ -66,6 +68,9 @@ export default function InspecaoExtintorPage({ params }: { params: Promise<{ id:
     const formData = new FormData(e.currentTarget)
     formData.append('extintorId', id)
     formData.append('usuarioId', 'temp-user-id')
+    if (dataInspecao) {
+      formData.append('dataInspecao', format(dataInspecao, 'yyyy-MM-dd'))
+    }
     
     const items = ['manometro', 'lacre', 'sinalizacao', 'mangueira', 'pintura', 'seloInmetro']
     const hasNonConformity = items.some(item => formData.get(item) === 'nao-conforme')
@@ -203,13 +208,10 @@ export default function InspecaoExtintorPage({ params }: { params: Promise<{ id:
                 <Label htmlFor="dataInspecao" className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">
                   Data da Inspeção
                 </Label>
-                <Input
-                  id="dataInspecao"
-                  name="dataInspecao"
-                  type="date"
-                  required
-                  defaultValue={new Date().toISOString().split('T')[0]}
-                  className="h-12 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus-visible:ring-[#B11226] focus-visible:ring-offset-2 transition-all font-medium"
+                <DatePicker
+                  date={dataInspecao}
+                  setDate={setDataInspecao}
+                  placeholder="dd/mm/aaaa"
                 />
               </div>
               

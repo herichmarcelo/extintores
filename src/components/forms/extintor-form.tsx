@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -11,8 +11,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/select"
 import { Camera, Loader2, Plus } from "lucide-react"
 import { createExtintor, getUnidades, updateExtintor } from "@/app/actions/extintores"
+import { DatePicker } from "@/components/date-picker"
+import { format } from "date-fns"
 
 interface Extintor {
   id: string
@@ -50,6 +52,8 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [unidades, setUnidades] = useState<any[]>([])
+  const [validadeCarga, setValidadeCarga] = useState<Date | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
     if (open) {
@@ -57,8 +61,14 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
       if (extintor?.foto) {
         setPreviewUrl(extintor.foto)
       }
+      if (extintor?.validadeCarga) {
+        setValidadeCarga(new Date(extintor.validadeCarga))
+      } else {
+        setValidadeCarga(null)
+      }
     } else {
       setPreviewUrl(null)
+      setValidadeCarga(null)
     }
   }, [open, extintor])
 
@@ -75,6 +85,9 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
     setIsSubmitting(true)
 
     const formData = new FormData(e.currentTarget)
+    if (validadeCarga) {
+      formData.append('validadeCarga', format(validadeCarga, 'yyyy-MM-dd'))
+    }
     let result
 
     if (extintor) {
@@ -90,11 +103,6 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
       alert(result.error)
     }
     setIsSubmitting(false)
-  }
-
-  const formatDate = (date: Date | string) => {
-    const d = new Date(date)
-    return d.toISOString().split('T')[0]
   }
 
   return (
@@ -211,13 +219,10 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
             <Label htmlFor="validadeCarga" className="text-xs font-bold text-slate-600">
               Validade
             </Label>
-            <Input
-              id="validadeCarga"
-              name="validadeCarga"
-              type="date"
-              required
-              defaultValue={extintor ? formatDate(extintor.validadeCarga) : ""}
-              className="h-11 rounded-xl border-[#E5E7EB] bg-slate-50 focus:border-[#B11226] focus:ring-1 focus:ring-[#B11226]/20"
+            <DatePicker
+              date={validadeCarga}
+              setDate={setValidadeCarga}
+              placeholder="dd/mm/aaaa"
             />
           </div>
 

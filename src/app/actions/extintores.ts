@@ -15,6 +15,18 @@ export async function createExtintor(formData: FormData) {
     const unidadeId = formData.get('unidadeId') as string;
     const fotoFile = formData.get('foto') as File | null;
 
+    // Check for duplicate code in the same unit
+    const existingExtintor = await prisma.extintor.findFirst({
+      where: {
+        unidadeId,
+        codigo,
+      },
+    });
+
+    if (existingExtintor) {
+      return { success: false, error: 'Já existe um extintor com este código nesta unidade.' };
+    }
+
     let fotoUrl = null;
 
     if (fotoFile && fotoFile.size > 0) {
@@ -177,6 +189,19 @@ export async function updateExtintor(id: string, formData: FormData) {
     const validadeCarga = new Date(formData.get('validadeCarga') as string);
     const unidadeId = formData.get('unidadeId') as string;
     const fotoFile = formData.get('foto') as File | null;
+
+    // Check for duplicate code in the same unit (excluding the current extintor)
+    const existingExtintor = await prisma.extintor.findFirst({
+      where: {
+        unidadeId,
+        codigo,
+        NOT: { id },
+      },
+    });
+
+    if (existingExtintor) {
+      return { success: false, error: 'Já existe um extintor com este código nesta unidade.' };
+    }
 
     let fotoUrl = undefined;
 

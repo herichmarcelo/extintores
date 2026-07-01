@@ -36,7 +36,7 @@ model Unidade {
 
 model Extintor {
   id            String   @id @default(uuid())
-  codigo        String   @unique
+  codigo        String
   localizacao   String
   tipo          String
   capacidade    String
@@ -47,11 +47,13 @@ model Extintor {
   unidade   Unidade @relation(fields: [unidadeId], references: [id])
 
   inspecoes InspecaoExtintor[]
+
+  @@unique([unidadeId, codigo])
 }
 
 model Hidrante {
   id          String @id @default(uuid())
-  codigo      String @unique
+  codigo      String
   localizacao String
   foto        String?  // Foto do equipamento cadastrado
 
@@ -59,6 +61,8 @@ model Hidrante {
   unidade   Unidade @relation(fields: [unidadeId], references: [id])
 
   inspecoes InspecaoHidrante[]
+
+  @@unique([unidadeId, codigo])
 }
 
 model InspecaoExtintor {
