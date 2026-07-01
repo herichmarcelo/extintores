@@ -167,6 +167,64 @@ export async function getExtintorComHistorico(id: string) {
   }
 }
 
+export async function updateExtintor(id: string, formData: FormData) {
+  try {
+    const codigo = formData.get('codigo') as string;
+    const localizacao = formData.get('localizacao') as string;
+    const tipo = formData.get('tipo') as string;
+    const capacidade = formData.get('capacidade') as string;
+    const validadeCarga = new Date(formData.get('validadeCarga') as string);
+    const unidadeId = formData.get('unidadeId') as string;
+    const fotoFile = formData.get('foto') as File | null;
+
+    let fotoUrl = undefined;
+
+    if (fotoFile && fotoFile.size > 0) {
+      const arrayBuffer = await fotoFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const fileUri = `data:${fotoFile.type};base64,${buffer.toString('base64')}`;
+      fotoUrl = await uploadImage(fileUri, 'extintores');
+    }
+
+    await prisma.extintor.update({
+      where: { id },
+      data: {
+        codigo,
+        localizacao,
+        tipo,
+        capacidade,
+        validadeCarga,
+        unidadeId,
+        ...(fotoUrl !== undefined && { foto: fotoUrl }),
+      },
+    });
+
+    revalidatePath('/unidades');
+    revalidatePath('/extintores');
+    revalidatePath('/dashboard');
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating extintor:', error);
+    return { success: false, error: 'Falha ao atualizar extintor' };
+  }
+}
+
+export async function deleteExtintor(id: string) {
+  try {
+    await prisma.extintor.delete({
+      where: { id },
+    });
+
+    revalidatePath('/unidades');
+    revalidatePath('/extintores');
+    revalidatePath('/dashboard');
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting extintor:', error);
+    return { success: false, error: 'Falha ao deletar extintor' };
+  }
+}
+
 export async function getDashboardData() {
   try {
     const unidades = await prisma.unidade.findMany({

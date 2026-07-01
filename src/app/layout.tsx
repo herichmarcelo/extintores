@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Bello SESMT",
+    title: "Bello Alimentos - Gestão de Extintores",
   },
 };
 
