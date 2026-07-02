@@ -21,13 +21,15 @@ const filters: { value: FilterType; label: string }[] = [
 
 export function FilterTabs({ activeFilter, onFilterChange, className }: FilterTabsProps) {
   return (
-    <div className={cn("flex items-center gap-1 bg-slate-100 p-1.5 rounded-xl", className)}>
+    // 1. Adicionado 'overflow-x-auto' para permitir a rolagem e 'no-scrollbar' para esconder a barra
+    <div className={cn("flex items-center gap-1 bg-slate-100 p-1.5 rounded-xl overflow-x-auto no-scrollbar", className)}>
       {filters.map((filter) => (
         <button
           key={filter.value}
           onClick={() => onFilterChange(filter.value)}
           className={cn(
-            "px-4 py-2.5 text-sm font-bold rounded-lg transition-all duration-200",
+            // 2. Adicionado 'whitespace-nowrap' (texto não quebra) e 'shrink-0' (botão não amassa)
+            "px-4 py-2.5 text-sm font-bold rounded-lg transition-all duration-200 whitespace-nowrap shrink-0",
             activeFilter === filter.value
               ? "bg-white text-[#B11226] shadow-sm"
               : "text-slate-500 hover:text-slate-700 hover:bg-white/50"

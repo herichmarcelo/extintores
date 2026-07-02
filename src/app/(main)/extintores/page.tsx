@@ -317,18 +317,13 @@ export default function ExtintoresPage() {
           {/* PAGINATION */}
           <div className="mt-6">
             {filteredExtintores.length > 0 && (
-              <div className="flex flex-row items-center justify-between">
-                <span className="text-xs text-slate-500 font-medium">
-                  Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredExtintores.length)} de {filteredExtintores.length}
-                </span>
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  totalItems={filteredExtintores.length}
-                  itemsPerPage={itemsPerPage}
-                  onPageChange={setCurrentPage}
-                />
-              </div>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredExtintores.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+              />
             )}
           </div>
         </div>

@@ -108,7 +108,7 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {trigger ? (
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
+        <DialogTrigger>{trigger}</DialogTrigger>
       ) : !extintor && (
         <DialogTrigger
           render={

@@ -155,7 +155,7 @@ export default function HidrantesPage() {
                 <div className="flex justify-between items-start mb-5">
                   <div className="flex items-center gap-4">
                     <div className="h-14 w-14 rounded-2xl bg-slate-50 flex items-center justify-center overflow-hidden border border-slate-100 shrink-0">
-                      {hidrante.foto ? <img src={hidrante.foto} alt={hidrante.codigo} className="h-full w-full object-cover" /> : <Droplet className="h-6 w-6 text-slate-300" />}
+                      {hidrante.foto ? <img src={hidrante.foto} alt={hidrante.codigo} className="h-full w-full object-cover" /> : <Droplets className="h-6 w-6 text-slate-300" />}
                     </div>
                     <div>
                       <h3 className="font-black text-slate-900 text-xl tracking-tighter leading-none mb-1.5">{hidrante.codigo}</h3>
@@ -216,7 +216,7 @@ export default function HidrantesPage() {
             <div className="flex flex-col items-center gap-4">
               <div className="p-5 rounded-full bg-blue-50 text-blue-600 shadow-[0_0_20px_rgba(41,121,255,0.15)] relative">
                 <div className="absolute inset-0 border-2 border-blue-600 rounded-full animate-ping opacity-20" />
-                <Droplet className="h-12 w-12" />
+                <Droplets className="h-12 w-12" />
               </div>
               <div className="space-y-2">
                 <h3 className="font-black text-slate-800 text-lg">Nenhum hidrante</h3>
