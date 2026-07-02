@@ -12,12 +12,8 @@ import {
   Flame,
   Calendar,
   CheckCircle2,
-  ClipboardCheck,
-  FileText,
-  Edit2,
-  Trash2
+  ClipboardCheck
 } from "lucide-react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { SearchBar } from "@/components/SearchBar"
 import { KpiCard } from "@/components/KpiCard"
@@ -67,10 +63,6 @@ export default function ExtintoresPage() {
   const [activeFilter, setActiveFilter] = useState<FilterType>("todos")
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  
-  // NOVO: Estado para controlar qual card mobile está expandido
-  const [expandedCardId, setExpandedCardId] = useState<string | null>(null)
-  
   const itemsPerPage = 10
 
   // Obtém o nome da unidade selecionada
@@ -125,7 +117,6 @@ export default function ExtintoresPage() {
 
     setFilteredExtintores(filtered)
     setCurrentPage(1)
-    setExpandedCardId(null) // Fecha menus ao filtrar
   }, [extintores, activeFilter, searchQuery, selectedUnidade])
 
   const getStatus = (extintor: Extintor) => {
@@ -155,7 +146,6 @@ export default function ExtintoresPage() {
       setExtintores(extintores.filter((e) => e.id !== deleteId))
       setDeleteDialogOpen(false)
       setDeleteId(null)
-      setExpandedCardId(null)
     } else {
       alert(result.error)
     }
@@ -166,17 +156,12 @@ export default function ExtintoresPage() {
     const extintor = extintores.find((e) => e.id === id)
     if (extintor) {
       setEditExtintor(extintor)
-      setExpandedCardId(null)
     }
   }
 
   const handleDeleteClick = (id: string) => {
     setDeleteId(id)
     setDeleteDialogOpen(true)
-  }
-
-  const toggleCard = (id: string) => {
-    setExpandedCardId(expandedCardId === id ? null : id)
   }
 
   const total = extintores.length
@@ -258,116 +243,72 @@ export default function ExtintoresPage() {
           <div className="space-y-5">
             {paginatedExtintores.map((extintor) => {
               const status = getStatus(extintor);
-              const isExpanded = expandedCardId === extintor.id;
-
               return (
-                <div key={extintor.id} className="bg-white rounded-2xl p-4 flex flex-col shadow-sm border border-slate-100 transition-all duration-200">
-                  <div className="flex gap-4">
-                    <div className="flex flex-col gap-2 items-center w-[72px] shrink-0">
-                      <div className="w-full h-[90px] bg-slate-100 rounded-xl flex items-center justify-center p-2">
-                        {extintor.foto ? (
-                          <img src={extintor.foto} alt={extintor.codigo} className="w-full h-full object-contain" />
-                        ) : (
-                          <Flame className="w-8 h-8 text-[#B11226]/50" />
-                        )}
-                      </div>
-                      <button className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 bg-white shadow-sm">
-                        <QrCode className="w-4 h-4" />
-                      </button>
+                <div key={extintor.id} className="bg-white rounded-2xl p-4 flex gap-4 shadow-sm border border-slate-100">
+                  <div className="flex flex-col gap-2 items-center w-[72px] shrink-0">
+                    <div className="w-full h-[90px] bg-slate-100 rounded-xl flex items-center justify-center p-2">
+                      {extintor.foto ? (
+                        <img src={extintor.foto} alt={extintor.codigo} className="w-full h-full object-contain" />
+                      ) : (
+                        <Flame className="w-8 h-8 text-[#B11226]/50" />
+                      )}
                     </div>
-                    <div className="flex-1 flex flex-col justify-between pt-1">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="text-xl font-black text-slate-900 leading-none mb-1">{extintor.codigo}</h3>
-                          <p className="text-xs font-bold text-slate-900 uppercase tracking-wide">{extintor.localizacao}</p>
-                          <p className="text-[10px] text-slate-500 font-medium mt-0.5">{extintor.unidade.nome}</p>
-                        </div>
-                        <div className="flex items-center gap-1 -mt-1">
-                          {status === 'vencido' && (
-                            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-wider border border-red-100">
-                              <AlertCircle className="w-3 h-3" /> Vencido
-                            </span>
-                          )}
-                          {status === 'em-dia' || status === 'inspecionado' ? (
-                            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-wider border border-green-100">
-                              <CheckCircle2 className="w-3 h-3" /> Em dia
-                            </span>
-                          ) : null}
-                          {status === 'vencendo' && (
-                            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-600 text-[10px] font-black uppercase tracking-wider border border-orange-100">
-                              <Clock className="w-3 h-3" /> Vencendo
-                            </span>
-                          )}
-                          <button 
-                            onClick={() => toggleCard(extintor.id)}
-                            className="p-1.5 -mr-1.5 rounded-full hover:bg-slate-100 transition-colors"
-                          >
-                            <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
-                          </button>
-                        </div>
+                    <button className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 bg-white shadow-sm">
+                      <QrCode className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex-1 flex flex-col justify-between pt-1">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-xl font-black text-slate-900 leading-none mb-1">{extintor.codigo}</h3>
+                        <p className="text-xs font-bold text-slate-900 uppercase tracking-wide">{extintor.localizacao}</p>
+                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">{extintor.unidade.nome}</p>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-100">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-1 text-slate-500 mb-0.5">
-                            <Flame className="w-3 h-3 text-orange-500" />
-                            <span className="text-[9px] font-bold text-slate-700">{extintor.tipo}</span>
-                          </div>
-                          <span className="text-[9px] text-slate-500 font-medium pl-4">{extintor.capacidade}</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-1 text-slate-500 mb-0.5">
-                            <Calendar className="w-3 h-3 text-slate-400" />
-                            <span className="text-[9px] font-medium text-slate-700">Validade</span>
-                          </div>
-                          <span className="text-[10px] text-slate-900 font-bold pl-4">{formatDate(extintor.validadeCarga)}</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-1 text-slate-500 mb-0.5">
-                            <ClipboardCheck className="w-3 h-3 text-slate-400" />
-                            <span className="text-[9px] font-medium text-slate-700">Última Insp.</span>
-                          </div>
-                          <span className="text-[10px] text-slate-900 font-bold pl-4">
-                            {extintor.inspecoes?.[0]?.dataInspecao ? formatDate(extintor.inspecoes[0].dataInspecao) : '--/--/----'}
+                      <div className="flex items-center gap-1.5 -mt-1">
+                        {status === 'vencido' && (
+                          <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-wider border border-red-100">
+                            <AlertCircle className="w-3 h-3" /> Vencido
                           </span>
+                        )}
+                        {status === 'em-dia' || status === 'inspecionado' ? (
+                          <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-wider border border-green-100">
+                            <CheckCircle2 className="w-3 h-3" /> Em dia
+                          </span>
+                        ) : null}
+                        {status === 'vencendo' && (
+                          <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-600 text-[10px] font-black uppercase tracking-wider border border-orange-100">
+                            <Clock className="w-3 h-3" /> Vencendo
+                          </span>
+                        )}
+                        <ChevronRight className="w-5 h-5 text-slate-400" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-100">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1 text-slate-500 mb-0.5">
+                          <Flame className="w-3 h-3 text-orange-500" />
+                          <span className="text-[9px] font-bold text-slate-700">{extintor.tipo}</span>
                         </div>
+                        <span className="text-[9px] text-slate-500 font-medium pl-4">{extintor.capacidade}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1 text-slate-500 mb-0.5">
+                          <Calendar className="w-3 h-3 text-slate-400" />
+                          <span className="text-[9px] font-medium text-slate-700">Validade</span>
+                        </div>
+                        <span className="text-[10px] text-slate-900 font-bold pl-4">{formatDate(extintor.validadeCarga)}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1 text-slate-500 mb-0.5">
+                          <ClipboardCheck className="w-3 h-3 text-slate-400" />
+                          <span className="text-[9px] font-medium text-slate-700">Última Insp.</span>
+                        </div>
+                        <span className="text-[10px] text-slate-900 font-bold pl-4">
+                          {extintor.inspecoes?.[0]?.dataInspecao ? formatDate(extintor.inspecoes[0].dataInspecao) : '--/--/----'}
+                        </span>
                       </div>
                     </div>
                   </div>
-
-                  {/* MENU DE AÇÕES EXPANSÍVEL NO MOBILE */}
-                  {isExpanded && (
-                    <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-2 animate-in slide-in-from-top-2 fade-in duration-200">
-                      <Link href={`/extintores/historico/${extintor.id}`} className="flex-1">
-                        <Button variant="ghost" className="w-full flex flex-col gap-1.5 h-auto py-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl">
-                          <FileText className="w-4 h-4" />
-                          <span className="text-[9px] font-bold uppercase tracking-widest">Histórico</span>
-                        </Button>
-                      </Link>
-                      <Link href={`/extintores/inspecao/${extintor.id}`} className="flex-1">
-                        <Button variant="ghost" className="w-full flex flex-col gap-1.5 h-auto py-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl">
-                          <ClipboardCheck className="w-4 h-4" />
-                          <span className="text-[9px] font-bold uppercase tracking-widest">Inspecionar</span>
-                        </Button>
-                      </Link>
-                      <Button 
-                        variant="ghost" 
-                        onClick={() => handleEdit(extintor.id)}
-                        className="flex-1 flex flex-col gap-1.5 h-auto py-3 bg-blue-50/50 hover:bg-blue-100 text-blue-600 rounded-xl"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">Editar</span>
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        onClick={() => handleDeleteClick(extintor.id)}
-                        className="flex-1 flex flex-col gap-1.5 h-auto py-3 bg-red-50/50 hover:bg-red-100 text-red-600 rounded-xl"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">Excluir</span>
-                      </Button>
-                    </div>
-                  )}
-
                 </div>
               )
             })}
