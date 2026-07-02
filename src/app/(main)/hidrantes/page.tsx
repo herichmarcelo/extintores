@@ -2,13 +2,21 @@
 
 import { useState, useEffect } from "react"
 import { getHidrantes, deleteHidrante } from "@/app/actions/hidrantes"
+import { getUnidades } from "@/app/actions/extintores"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ClipboardCheck, MapPin, Camera, Search, Filter, AlertCircle, CheckCircle2, Clock, Droplet, Gauge, Ruler, Edit2, Trash2 } from "lucide-react"
+import { ClipboardCheck, MapPin, Camera, Search, Building2, AlertCircle, CheckCircle2, Clock, Droplets, Gauge, Ruler, Edit2, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { HidranteForm } from "@/components/forms/hidrante-form"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select"
+import { SearchBar } from "@/components/SearchBar"
+import { SelectWithIcon } from "@/components/SelectWithIcon"
+import { BottomNavigation } from "@/components/BottomNavigation"
 
 const COLORS = {
   blueNeon: "#2979ff",
@@ -30,20 +38,55 @@ interface Hidrante {
 
 export default function HidrantesPage() {
   const [hidrantes, setHidrantes] = useState<Hidrante[]>([])
+  const [filteredHidrantes, setFilteredHidrantes] = useState<Hidrante[]>([])
+  const [unidades, setUnidades] = useState<any[]>([])
+  const [selectedUnidade, setSelectedUnidade] = useState<string>("todos")
+  const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
   const [editHidrante, setEditHidrante] = useState<Hidrante | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // Obtém o nome da unidade selecionada
+  const getNomeUnidadeSelecionada = () => {
+    if (selectedUnidade === "todos") return "Todas as unidades"
+    const unidade = unidades.find((u) => u.id === selectedUnidade)
+    return unidade ? unidade.nome : "Todas as unidades"
+  }
+
   useEffect(() => {
     async function fetchData() {
-      const data = await getHidrantes()
-      setHidrantes(data as unknown as Hidrante[])
+      const [hidrantesData, unidadesData] = await Promise.all([
+        getHidrantes(),
+        getUnidades()
+      ])
+      setHidrantes(hidrantesData as unknown as Hidrante[])
+      setFilteredHidrantes(hidrantesData as unknown as Hidrante[])
+      setUnidades(unidadesData.data || [])
       setLoading(false)
     }
     fetchData()
   }, [])
+
+  useEffect(() => {
+    let filtered = [...hidrantes]
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(
+        (h) =>
+          h.codigo.toLowerCase().includes(query) ||
+          h.localizacao.toLowerCase().includes(query)
+      )
+    }
+
+    if (selectedUnidade !== "todos") {
+      filtered = filtered.filter((h) => h.unidadeId === selectedUnidade)
+    }
+
+    setFilteredHidrantes(filtered)
+  }, [hidrantes, searchQuery, selectedUnidade])
 
   const handleDelete = async () => {
     if (!deleteId) return
@@ -70,22 +113,34 @@ export default function HidrantesPage() {
         <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">Rede de Combate a Incêndio</p>
       </div>
 
-      <div className="flex gap-3">
-        <div className="relative flex-1 group">
-          <Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-          <Input placeholder="Buscar por código, registro ou local..." className="pl-12 h-12 bg-white border-slate-200 rounded-2xl text-sm focus-visible:ring-2 focus-visible:ring-blue-600/20 focus-visible:border-blue-600 transition-all font-bold shadow-sm" />
-        </div>
-        <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-slate-200 bg-white shadow-sm hover:border-blue-600 hover:text-blue-600 hover:bg-blue-50 transition-all">
-          <Filter className="h-5 w-5" />
-        </Button>
+      <div className="flex flex-col gap-3">
+        <SearchBar
+          placeholder="Buscar por código, registro ou local..."
+          onSearch={setSearchQuery}
+          focusColor="blue"
+        />
+        <SelectWithIcon
+          icon={<Building2 className="w-5 h-5" />}
+          value={selectedUnidade}
+          onValueChange={setSelectedUnidade}
+          placeholder={getNomeUnidadeSelecionada()}
+          displayValue={getNomeUnidadeSelecionada()}
+          focusColor="blue"
+        >
+          <SelectItem value="todos" className="font-medium">Todas as unidades</SelectItem>
+          {unidades.map((u) => (
+            <SelectItem key={u.id} value={u.id} className="font-medium">
+              {u.nome}
+            </SelectItem>
+          ))}
+        </SelectWithIcon>
       </div>
-
       <div className="w-full">
         <HidranteForm />
       </div>
 
       <div className="space-y-5 mt-4">
-        {hidrantes.map((hidrante) => {
+        {filteredHidrantes.map((hidrante) => {
           const ultimaInspecao = (hidrante as any).inspecoes?.[0]
           const status = ultimaInspecao?.status || "Pendente"
           const isConforme = status === "Conforme"
@@ -156,7 +211,7 @@ export default function HidrantesPage() {
             </div>
           )
         })}
-        {hidrantes.length === 0 && (
+        {filteredHidrantes.length === 0 && (
           <div className="py-24 text-center bg-white rounded-[2rem] border-2 border-dashed border-slate-200 shadow-sm">
             <div className="flex flex-col items-center gap-4">
               <div className="p-5 rounded-full bg-blue-50 text-blue-600 shadow-[0_0_20px_rgba(41,121,255,0.15)] relative">
@@ -190,6 +245,9 @@ export default function HidrantesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <div className="lg:hidden">
+        <BottomNavigation />
+      </div>
     </div>
   )
 }

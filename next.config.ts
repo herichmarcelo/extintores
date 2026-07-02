@@ -12,12 +12,14 @@ import type { NextConfig } from "next";
  }); 
  
  const nextConfig: NextConfig = { 
-   // Mantemos isso para a Vercel não estourar a memória (WorkerError) 
-   typescript: { 
-     ignoreBuildErrors: true, 
-   }, 
-   // Configuração obrigatória para o Next.js 16 
-   turbopack: {}, 
- }; 
+  // Mantemos isso para a Vercel não estourar a memória (WorkerError) 
+  typescript: { 
+    ignoreBuildErrors: true, 
+  }, 
+  // Configuração obrigatória para o Next.js 16 
+  turbopack: {}, 
+  // Permite acesso via IP local no desenvolvimento 
+  allowedDevOrigins: ['192.168.88.249'], 
+}; 
  
  export default withPWA(nextConfig); 

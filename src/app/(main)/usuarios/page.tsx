@@ -1,34 +1,35 @@
 "use client" 
- 
- import { useState, useEffect } from "react" 
- import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card" 
- import { Button } from "@/components/ui/button" 
- import { Input } from "@/components/ui/input" 
- import { Badge } from "@/components/ui/badge" 
- import { 
-   Dialog, 
-   DialogContent, 
-   DialogDescription, 
-   DialogFooter, 
-   DialogHeader, 
-   DialogTitle, 
-   DialogTrigger, 
- } from "@/components/ui/dialog" 
- import { 
-   Users, 
-   ShieldAlert, 
-   Search, 
-   Filter, 
-   UserPlus, 
-   Eye, 
-   ClipboardCheck, 
-   MoreVertical, 
-   ShieldCheck,
-   Loader2,
-   Lock
- } from "lucide-react" 
- import { motion } from "framer-motion" 
- import { getUsuarios, createUsuario, deleteUsuario } from "@/app/actions/usuarios"
+
+import { useState, useEffect } from "react" 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card" 
+import { Button } from "@/components/ui/button" 
+import { Input } from "@/components/ui/input" 
+import { Badge } from "@/components/ui/badge" 
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger, 
+} from "@/components/ui/dialog" 
+import { 
+  Users, 
+  ShieldAlert, 
+  Search, 
+  Filter, 
+  UserPlus, 
+  Eye, 
+  ClipboardCheck, 
+  MoreVertical, 
+  ShieldCheck,
+  Loader2,
+  Lock
+} from "lucide-react" 
+import { motion } from "framer-motion" 
+import { getUsuarios, createUsuario, deleteUsuario } from "@/app/actions/usuarios"
+import { BottomNavigation } from "@/components/BottomNavigation"
  
  // Definição de Cores das Hierarquias 
  const ROLES = { 
@@ -304,6 +305,9 @@
            )}
          </div> 
        </motion.div> 
+       <div className="lg:hidden">
+        <BottomNavigation />
+      </div>
      </motion.div> 
    ) 
- }
+}

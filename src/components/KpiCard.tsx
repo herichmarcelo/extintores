@@ -2,7 +2,7 @@
 
 import { ReactNode } from "react"
 import { cn } from "@/lib/utils"
-import { Flame, Calendar, ShieldCheck, ClipboardList } from "lucide-react"
+import { Flame, Calendar, ShieldCheck, ClipboardList, AlertCircle } from "lucide-react"
 
 type KpiType = "total" | "vencidos" | "proximos" | "em-dia" | "inspecoes-hoje"
 
@@ -65,5 +65,3 @@ export function KpiCard({ type, value, label, subtitle, className }: KpiCardProp
     </div>
   )
 }
-
-import { AlertCircle } from "lucide-react"

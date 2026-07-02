@@ -128,14 +128,16 @@ export function FireExtinguisherTable({ extinguishers, className }: FireExtingui
                     <Edit2 className="w-4 h-4 text-slate-600" />
                   </Button>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 rounded-lg hover:bg-slate-100"
-                      >
-                        <MoreHorizontal className="w-4 h-4 text-slate-600" />
-                      </Button>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 rounded-lg hover:bg-slate-100"
+                        />
+                      }
+                    >
+                      <MoreHorizontal className="w-4 h-4 text-slate-600" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48 rounded-xl">
                       <DropdownMenuItem

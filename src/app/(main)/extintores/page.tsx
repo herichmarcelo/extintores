@@ -1,14 +1,23 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getExtintores, deleteExtintor } from "@/app/actions/extintores"
-import { Plus, RefreshCw } from "lucide-react"
+import { getExtintores, deleteExtintor, getUnidades } from "@/app/actions/extintores"
+import { 
+  RefreshCw, 
+  Building2, 
+  QrCode,
+  ChevronRight,
+  Clock,
+  AlertCircle,
+  Flame,
+  Calendar,
+  CheckCircle2,
+  ClipboardCheck
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Header } from "@/components/Header"
 import { SearchBar } from "@/components/SearchBar"
 import { KpiCard } from "@/components/KpiCard"
 import { FilterTabs } from "@/components/FilterTabs"
-import { FireExtinguisherCard } from "@/components/FireExtinguisherCard"
 import { FireExtinguisherTable } from "@/components/FireExtinguisherTable"
 import { Pagination } from "@/components/Pagination"
 import { BottomNavigation } from "@/components/BottomNavigation"
@@ -21,6 +30,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  SelectItem,
+} from "@/components/ui/select"
+import { SelectWithIcon } from "@/components/SelectWithIcon"
 
 type FilterType = "todos" | "pendentes" | "vencidos" | "vencendo" | "em-dia" | "inspecionados"
 
@@ -40,6 +53,8 @@ interface Extintor {
 export default function ExtintoresPage() {
   const [extintores, setExtintores] = useState<Extintor[]>([])
   const [filteredExtintores, setFilteredExtintores] = useState<Extintor[]>([])
+  const [unidades, setUnidades] = useState<any[]>([])
+  const [selectedUnidade, setSelectedUnidade] = useState<string>("todos")
   const [loading, setLoading] = useState(true)
   const [editExtintor, setEditExtintor] = useState<Extintor | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -50,11 +65,22 @@ export default function ExtintoresPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
+  // Obtém o nome da unidade selecionada
+  const getNomeUnidadeSelecionada = () => {
+    if (selectedUnidade === "todos") return "Todas as unidades"
+    const unidade = unidades.find((u) => u.id === selectedUnidade)
+    return unidade ? unidade.nome : "Todas as unidades"
+  }
+
   useEffect(() => {
     async function fetchData() {
-      const data = await getExtintores()
-      setExtintores(data as unknown as Extintor[])
-      setFilteredExtintores(data as unknown as Extintor[])
+      const [extintoresData, unidadesData] = await Promise.all([
+        getExtintores(),
+        getUnidades()
+      ])
+      setExtintores(extintoresData as unknown as Extintor[])
+      setFilteredExtintores(extintoresData as unknown as Extintor[])
+      setUnidades(unidadesData.data || [])
       setLoading(false)
     }
     fetchData()
@@ -76,7 +102,7 @@ export default function ExtintoresPage() {
     if (activeFilter !== "todos") {
       filtered = filtered.filter((e) => {
         const status = getStatus(e)
-        if (activeFilter === "pendentes") return status === "em-dia"
+        if (activeFilter === "pendentes") return status === "vencendo"
         if (activeFilter === "vencidos") return status === "vencido"
         if (activeFilter === "vencendo") return status === "vencendo"
         if (activeFilter === "em-dia") return status === "em-dia"
@@ -85,9 +111,13 @@ export default function ExtintoresPage() {
       })
     }
 
+    if (selectedUnidade !== "todos") {
+      filtered = filtered.filter((e) => e.unidadeId === selectedUnidade)
+    }
+
     setFilteredExtintores(filtered)
     setCurrentPage(1)
-  }, [extintores, activeFilter, searchQuery])
+  }, [extintores, activeFilter, searchQuery, selectedUnidade])
 
   const getStatus = (extintor: Extintor) => {
     const validade = new Date(extintor.validadeCarga)
@@ -162,11 +192,152 @@ export default function ExtintoresPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA]">
-      <Header />
-      <main className="px-4 lg:px-8 py-6 pb-24 lg:pb-8">
+    <div className="min-h-screen bg-[#F7F8FA] overflow-x-hidden pb-24 lg:pb-0">
+      {/* MOBILE LAYOUT */}
+      <div className="lg:hidden">
+        {/* MOBILE CONTENT */}
+        <div className="px-4 py-4">
+          {/* SEARCH BAR */}
+          <div className="mb-4">
+            <SearchBar onSearch={setSearchQuery} />
+          </div>
+
+          {/* NEW EXTINGUISHER BUTTON - FULL WIDTH */}
+          <div className="mb-6">
+            <ExtintorForm />
+          </div>
+
+          {/* KPIs 2x2 GRID */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <KpiCard type="vencidos" value={vencidos} label="Vencidos" subtitle="Precisa de atenção" />
+            <KpiCard type="proximos" value={proximos} label="Próximos" subtitle="Vencem em breve" />
+            <KpiCard type="em-dia" value={emDia} label="Em dia" subtitle="Tudo certo" />
+            <KpiCard type="inspecoes-hoje" value={inspecoesHoje} label="Hoje" subtitle="Realizadas" />
+          </div>
+
+          {/* FILTER TABS */}
+          <div className="mb-4">
+            <FilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+          </div>
+
+          {/* SELECT UNIDADE */}
+          <div className="mb-6 h-12">
+            <SelectWithIcon
+              icon={<Building2 className="w-5 h-5" />}
+              value={selectedUnidade}
+              onValueChange={(value) => setSelectedUnidade(value ?? "todos")}
+              placeholder={getNomeUnidadeSelecionada()}
+              displayValue={getNomeUnidadeSelecionada()}
+              className="w-full h-full"
+            >
+              <SelectItem value="todos" className="font-medium">Todas as unidades</SelectItem>
+              {unidades.map((u) => (
+                <SelectItem key={u.id} value={u.id} className="font-medium">
+                  {u.nome}
+                </SelectItem>
+              ))}
+            </SelectWithIcon>
+          </div>
+
+          {/* CARDS LIST */}
+          <div className="space-y-5">
+            {paginatedExtintores.map((extintor) => {
+              const status = getStatus(extintor);
+              return (
+                <div key={extintor.id} className="bg-white rounded-2xl p-4 flex gap-4 shadow-sm border border-slate-100">
+                  <div className="flex flex-col gap-2 items-center w-[72px] shrink-0">
+                    <div className="w-full h-[90px] bg-slate-100 rounded-xl flex items-center justify-center p-2">
+                      {extintor.foto ? (
+                        <img src={extintor.foto} alt={extintor.codigo} className="w-full h-full object-contain" />
+                      ) : (
+                        <Flame className="w-8 h-8 text-[#B11226]/50" />
+                      )}
+                    </div>
+                    <button className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 bg-white shadow-sm">
+                      <QrCode className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex-1 flex flex-col justify-between pt-1">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-xl font-black text-slate-900 leading-none mb-1">{extintor.codigo}</h3>
+                        <p className="text-xs font-bold text-slate-900 uppercase tracking-wide">{extintor.localizacao}</p>
+                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">{extintor.unidade.nome}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 -mt-1">
+                        {status === 'vencido' && (
+                          <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-wider border border-red-100">
+                            <AlertCircle className="w-3 h-3" /> Vencido
+                          </span>
+                        )}
+                        {status === 'em-dia' || status === 'inspecionado' ? (
+                          <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-wider border border-green-100">
+                            <CheckCircle2 className="w-3 h-3" /> Em dia
+                          </span>
+                        ) : null}
+                        {status === 'vencendo' && (
+                          <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-600 text-[10px] font-black uppercase tracking-wider border border-orange-100">
+                            <Clock className="w-3 h-3" /> Vencendo
+                          </span>
+                        )}
+                        <ChevronRight className="w-5 h-5 text-slate-400" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-100">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1 text-slate-500 mb-0.5">
+                          <Flame className="w-3 h-3 text-orange-500" />
+                          <span className="text-[9px] font-bold text-slate-700">{extintor.tipo}</span>
+                        </div>
+                        <span className="text-[9px] text-slate-500 font-medium pl-4">{extintor.capacidade}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1 text-slate-500 mb-0.5">
+                          <Calendar className="w-3 h-3 text-slate-400" />
+                          <span className="text-[9px] font-medium text-slate-700">Validade</span>
+                        </div>
+                        <span className="text-[10px] text-slate-900 font-bold pl-4">{formatDate(extintor.validadeCarga)}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1 text-slate-500 mb-0.5">
+                          <ClipboardCheck className="w-3 h-3 text-slate-400" />
+                          <span className="text-[9px] font-medium text-slate-700">Última Insp.</span>
+                        </div>
+                        <span className="text-[10px] text-slate-900 font-bold pl-4">
+                          {extintor.inspecoes?.[0]?.dataInspecao ? formatDate(extintor.inspecoes[0].dataInspecao) : '--/--/----'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* PAGINATION */}
+          <div className="mt-6">
+            {filteredExtintores.length > 0 && (
+              <div className="flex flex-row items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium">
+                  Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredExtintores.length)} de {filteredExtintores.length}
+                </span>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={filteredExtintores.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* DESKTOP LAYOUT */}
+      <div className="hidden lg:block">
         <div className="max-w-7xl mx-auto">
-          <div className="hidden lg:flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-4xl font-bold text-slate-900">Extintores</h1>
               <p className="text-sm text-slate-500 font-medium mt-1">Matriz e Unidades</p>
@@ -183,107 +354,67 @@ export default function ExtintoresPage() {
             </div>
           </div>
 
-          <div className="lg:hidden flex flex-col gap-4 mb-6">
-            <div className="flex items-center justify-between">
-              <SearchBar onSearch={setSearchQuery} />
-              <ExtintorForm />
-            </div>
-          </div>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4 flex-1">
+              
+              {/* CAIXA 1: Barra de Busca travada com altura 48px */}
+              <div className="flex-1 max-w-md h-12">
+                <SearchBar onSearch={setSearchQuery} />
+              </div>
+              
+              {/* CAIXA 2: Select travado com a mesma altura e largura que você definiu */}
+              <div className="w-80 h-12">
+                <SelectWithIcon
+                  icon={<Building2 className="w-5 h-5" />}
+                  value={selectedUnidade}
+                  onValueChange={(value) => setSelectedUnidade(value ?? "todos")}
+                  placeholder={getNomeUnidadeSelecionada()}
+                  displayValue={getNomeUnidadeSelecionada()}
+                  className="w-full h-full"
+                >
+                  <SelectItem value="todos" className="font-medium">Todas as unidades</SelectItem>
+                  {unidades.map((u) => (
+                    <SelectItem key={u.id} value={u.id} className="font-medium">
+                      {u.nome}
+                    </SelectItem>
+                  ))}
+                </SelectWithIcon>
+              </div>
 
-          <div className="mb-6">
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
-              <KpiCard
-                type="total"
-                value={total}
-                label="Total"
-                className="col-span-2 lg:col-span-1"
-              />
-              <KpiCard
-                type="vencidos"
-                value={vencidos}
-                label="Vencidos"
-                subtitle="Precisa de atenção"
-              />
-              <KpiCard
-                type="proximos"
-                value={proximos}
-                label="Próximos 30 dias"
-                subtitle="Vencem em breve"
-              />
-              <KpiCard
-                type="em-dia"
-                value={emDia}
-                label="Em dia"
-                subtitle="Tudo certo"
-              />
-              <KpiCard
-                type="inspecoes-hoje"
-                value={inspecoesHoje}
-                label="Inspecções hoje"
-                subtitle="Realizadas hoje"
-                className="col-span-2 lg:col-span-1"
-              />
             </div>
-          </div>
-
-          <div className="hidden lg:flex items-center justify-between mb-6">
-            <div className="flex-1">
-              <SearchBar onSearch={setSearchQuery} className="max-w-xl" />
-            </div>
+            
             <div className="flex items-center gap-4">
-              <FilterTabs
-                activeFilter={activeFilter}
-                onFilterChange={setActiveFilter}
-              />
+              <FilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} />
               <div className="text-sm text-slate-500 font-medium">
                 {filteredExtintores.length} equipamentos
               </div>
             </div>
           </div>
 
-          <div className="lg:hidden mb-6">
-            <FilterTabs
-              activeFilter={activeFilter}
-              onFilterChange={setActiveFilter}
-            />
+          <div className="grid grid-cols-5 gap-4 mb-6">
+            <KpiCard type="total" value={total} label="Total" />
+            <KpiCard type="vencidos" value={vencidos} label="Vencidos" subtitle="Precisa de atenção" />
+            <KpiCard type="proximos" value={proximos} label="Próximos 30 dias" subtitle="Vencem em breve" />
+            <KpiCard type="em-dia" value={emDia} label="Em dia" subtitle="Tudo certo" />
+            <KpiCard type="inspecoes-hoje" value={inspecoesHoje} label="Inspecções hoje" subtitle="Realizadas hoje" />
           </div>
 
-          <div className="lg:hidden space-y-3">
-            {paginatedExtintores.map((extintor) => (
-              <FireExtinguisherCard
-                key={extintor.id}
-                id={extintor.id}
-                codigo={extintor.codigo}
-                foto={extintor.foto || undefined}
-                status={getStatus(extintor)}
-                localizacao={extintor.localizacao}
-                unidade={extintor.unidade.nome}
-                tipo={extintor.tipo}
-                capacidade={extintor.capacidade}
-                validade={formatDate(extintor.validadeCarga)}
-                ultimaInspecao={extintor.inspecoes?.[0]?.dataInspecao ? formatDate(extintor.inspecoes[0].dataInspecao) : undefined}
-              />
-            ))}
-          </div>
-
-          <div className="hidden lg:block">
-            <FireExtinguisherTable
-              extinguishers={paginatedExtintores.map((e) => ({
-                id: e.id,
-                codigo: e.codigo,
-                foto: e.foto || undefined,
-                status: getStatus(e),
-                localizacao: e.localizacao,
-                unidade: e.unidade.nome,
-                tipo: e.tipo,
-                capacidade: e.capacidade,
-                validade: formatDate(e.validadeCarga),
-                ultimaInspecao: e.inspecoes?.[0]?.dataInspecao ? formatDate(e.inspecoes[0].dataInspecao) : undefined,
-                onEdit: handleEdit,
-                onDelete: handleDeleteClick,
-              }))}
-            />
-          </div>
+          <FireExtinguisherTable
+            extinguishers={paginatedExtintores.map((e) => ({
+              id: e.id,
+              codigo: e.codigo,
+              foto: e.foto || undefined,
+              status: getStatus(e),
+              localizacao: e.localizacao,
+              unidade: e.unidade.nome,
+              tipo: e.tipo,
+              capacidade: e.capacidade,
+              validade: formatDate(e.validadeCarga),
+              ultimaInspecao: e.inspecoes?.[0]?.dataInspecao ? formatDate(e.inspecoes[0].dataInspecao) : undefined,
+              onEdit: handleEdit,
+              onDelete: handleDeleteClick,
+            }))}
+          />
 
           {filteredExtintores.length > 0 && (
             <div className="mt-6">
@@ -296,21 +427,24 @@ export default function ExtintoresPage() {
               />
             </div>
           )}
-
-          {filteredExtintores.length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-slate-100 flex items-center justify-center">
-                <div className="w-10 h-16 rounded bg-[#B11226]/20"></div>
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-1">Nenhum equipamento encontrado</h3>
-              <p className="text-sm text-slate-500">
-                {searchQuery ? "Tente ajustar os filtros ou a busca" : "Cadastre o primeiro extintor"}
-              </p>
-            </div>
-          )}
         </div>
-      </main>
-      <BottomNavigation />
+      </div>
+
+      {filteredExtintores.length === 0 && (
+        <div className="text-center py-16">
+          <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-slate-100 flex items-center justify-center">
+            <div className="w-10 h-16 rounded bg-[#B11226]/20"></div>
+          </div>
+          <h3 className="text-lg font-bold text-slate-900 mb-1">Nenhum equipamento encontrado</h3>
+          <p className="text-sm text-slate-500">
+            {searchQuery ? "Tente ajustar os filtros ou a busca" : "Cadastre o primeiro extintor"}
+          </p>
+        </div>
+      )}
+
+      <div className="lg:hidden">
+        <BottomNavigation />
+      </div>
 
       {editExtintor && (
         <ExtintorForm

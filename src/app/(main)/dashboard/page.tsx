@@ -16,6 +16,7 @@ import { Flame, CheckCircle2, TrendingUp, ShieldAlert, Map, Activity, Loader2 } 
 import { motion } from "framer-motion"
 import { useEffect, useState } from "react"
 import { getDashboardData } from "@/app/actions/extintores"
+import { BottomNavigation } from "@/components/BottomNavigation"
 
 // Cores vibrantes estilo "Bombeiro / Alerta / Neon"
 const COLORS = {
@@ -222,6 +223,10 @@ export default function DashboardPage() {
                     <Tooltip />
                   </PieChart>
                 </ResponsiveContainer>
+              </div>
+
+              <div className="lg:hidden">
+                <BottomNavigation />
               </div>
 
               {/* Legenda Customizada */}

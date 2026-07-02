@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label"
 import { createUnidade, updateUnidade, deleteUnidade } from "@/app/actions/unidades"
 import { getUnidades } from "@/app/actions/extintores"
 import { motion } from "framer-motion"
+import { BottomNavigation } from "@/components/BottomNavigation"
 
 // Cores do tema emergência/neon
 const COLORS = {
@@ -391,6 +392,9 @@ export default function UnidadesPage() {
           )}
         </div>
       )}
+      <div className="lg:hidden">
+        <BottomNavigation />
+      </div>
     </motion.div>
   )
 }

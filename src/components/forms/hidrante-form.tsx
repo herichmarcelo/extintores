@@ -93,15 +93,17 @@ export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setContr
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {trigger ? (
-        <DialogTrigger>{trigger}</DialogTrigger>
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
       ) : !hidrante && (
-        <DialogTrigger>
-          <Button
-            className="bg-[#2979ff] hover:bg-[#2962ff] text-white font-bold rounded-xl h-11 shadow-sm transition-all flex items-center justify-center gap-2"
-          >
-            <Plus className="h-5 w-5" />
-            Novo Hidrante
-          </Button>
+        <DialogTrigger
+          render={
+            <Button
+              className="w-full bg-[#2979ff] hover:bg-[#2962ff] text-white font-bold rounded-2xl h-12 shadow-sm transition-all flex items-center justify-center gap-2"
+            />
+          }
+        >
+          <Plus className="h-6 w-6" />
+          Novo Hidrante
         </DialogTrigger>
       )}
       <DialogContent className="sm:max-w-md rounded-2xl border-[#E5E7EB] shadow-lg p-6">

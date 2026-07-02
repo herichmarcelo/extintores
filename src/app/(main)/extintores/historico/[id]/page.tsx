@@ -23,6 +23,7 @@ import {
 import { getExtintorComHistorico } from "@/app/actions/extintores"
 import { motion } from "framer-motion"
 import { Badge } from "@/components/ui/badge"
+import { BottomNavigation } from "@/components/BottomNavigation"
 
 const container = {
   hidden: { opacity: 0 },
@@ -237,6 +238,9 @@ export default function HistoricoExtintorPage({ params }: { params: Promise<{ id
             </Card>
           </motion.div>
         ))}
+      </div>
+      <div className="lg:hidden">
+        <BottomNavigation />
       </div>
     </motion.div>
   )

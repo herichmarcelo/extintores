@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { motion } from "framer-motion"
+import { BottomNavigation } from "@/components/BottomNavigation"
 
 // Cores do tema Documentos/Analytics
 const COLORS = {
@@ -206,6 +207,9 @@ export default function RelatoriosPage() {
           </Table>
         </div>
       </motion.div>
+      <div className="lg:hidden">
+        <BottomNavigation />
+      </div>
     </motion.div>
   )
 }

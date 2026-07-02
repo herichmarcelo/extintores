@@ -12,6 +12,7 @@ import { createInspecao, getExtintorComHistorico } from "@/app/actions/extintore
 import { motion, AnimatePresence } from "framer-motion"
 import { DatePicker } from "@/components/date-picker"
 import { format } from "date-fns"
+import { BottomNavigation } from "@/components/BottomNavigation"
 
 const container = {
   hidden: { opacity: 0 },
@@ -330,6 +331,9 @@ export default function InspecaoExtintorPage({ params }: { params: Promise<{ id:
           </Button>
         </motion.div>
       </form>
+      <div className="lg:hidden">
+        <BottomNavigation />
+      </div>
     </motion.div>
   )
 }

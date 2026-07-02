@@ -1,16 +1,26 @@
 "use client"
 
-import { Flame, ClipboardCheck, FileText, Building2, MoreHorizontal } from "lucide-react"
+import { 
+  LayoutDashboard, 
+  Flame, 
+  Droplets, 
+  Building2, 
+  FileText, 
+  Users, 
+  Settings 
+} from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 
 const items = [
+  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Extintores", href: "/extintores", icon: Flame },
-  { title: "Inspecões", href: "#", icon: ClipboardCheck },
-  { title: "Relatórios", href: "/relatorios", icon: FileText },
+  { title: "Hidrantes", href: "/hidrantes", icon: Droplets },
   { title: "Unidades", href: "/unidades", icon: Building2 },
-  { title: "Mais", href: "#", icon: MoreHorizontal }
+  { title: "Relatórios", href: "/relatorios", icon: FileText },
+  { title: "Usuários", href: "/usuarios", icon: Users },
+  { title: "Config.", href: "/configuracoes", icon: Settings }, // Abreviei para caber melhor
 ]
 
 export function BottomNavigation() {
@@ -18,7 +28,11 @@ export function BottomNavigation() {
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] z-50 safe-area-pb">
-      <div className="flex items-center justify-around h-16 max-w-md mx-auto">
+      {/* 
+        Alterado para 'overflow-x-auto' para permitir que o usuário deslize para o lado.
+        A classe 'no-scrollbar' (veja a dica abaixo) esconde a barra de rolagem visualmente.
+      */}
+      <div className="flex items-center h-16 w-full overflow-x-auto px-2 no-scrollbar">
         {items.map((item) => {
           const isActive = pathname === item.href
           const Icon = item.icon
@@ -28,7 +42,8 @@ export function BottomNavigation() {
               key={item.title}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 px-4 py-2 transition-all duration-200",
+                // min-w-[72px] e shrink-0 garantem que os botões não sejam esmagados
+                "flex flex-col items-center justify-center gap-1 min-w-[72px] px-2 py-2 transition-all duration-200 shrink-0",
                 isActive ? "text-[#B11226]" : "text-slate-500"
               )}
             >
