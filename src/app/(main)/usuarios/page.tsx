@@ -14,6 +14,7 @@ import {
   DialogTitle, 
   DialogTrigger, 
 } from "@/components/ui/dialog" 
+import { Label } from "@/components/ui/label"
 import { 
   Users, 
   ShieldAlert, 
@@ -25,10 +26,16 @@ import {
   MoreVertical, 
   ShieldCheck,
   Loader2,
-  Lock
+  Lock,
+  Pencil,
+  Trash2,
+  Building2,
+  DoorOpen
 } from "lucide-react" 
 import { motion } from "framer-motion" 
-import { getUsuarios, createUsuario, deleteUsuario } from "@/app/actions/usuarios"
+import { getUsuarios, createUsuario, deleteUsuario, updateUsuario } from "@/app/actions/usuarios"
+import { getUnidades } from "@/app/actions/extintores"
+import { getSetores } from "@/app/actions/setores"
 import { BottomNavigation } from "@/components/BottomNavigation"
  
  // Definição de Cores das Hierarquias 
@@ -62,50 +69,126 @@ import { BottomNavigation } from "@/components/BottomNavigation"
      descricao: "Gestão de Segurança" 
    } 
  } 
- 
+
  const container = { 
    hidden: { opacity: 0 }, 
    show: { opacity: 1, transition: { staggerChildren: 0.1 } } 
  } 
- 
+
  const item = { 
    hidden: { y: 20, opacity: 0 }, 
    show: { y: 0, opacity: 1 } 
  } 
- 
- export default function UsuariosPage() { 
-   const [open, setOpen] = useState(false) 
-   const [isSubmitting, setIsSubmitting] = useState(false) 
-   const [usuarios, setUsuarios] = useState<any[]>([])
-   const [isLoading, setIsLoading] = useState(true)
 
-   const loadUsuarios = async () => {
-     setIsLoading(true)
-     const data = await getUsuarios()
-     setUsuarios(data)
-     setIsLoading(false)
-   }
+ type Unidade = { id: string; nome: string }
+ type Setor = { id: string; nome: string; unidadeId: string }
+ type Usuario = {
+   id: string
+   nome: string
+   email: string
+   perfil: string
+   unidadesAcesso: { unidade: Unidade }[]
+   setoresAcesso: { setor: Setor }[]
+ }
+
+ export default function UsuariosPage() { 
+   const [openCreate, setOpenCreate] = useState(false) 
+   const [openEdit, setOpenEdit] = useState(false)
+   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null)
+   const [isSubmitting, setIsSubmitting] = useState(false) 
+   const [usuarios, setUsuarios] = useState<Usuario[]>([])
+   const [unidades, setUnidades] = useState<Unidade[]>([])
+   const [setores, setSetores] = useState<Setor[]>([])
+   const [isLoading, setIsLoading] = useState(true)
+   const [selectedUnidades, setSelectedUnidades] = useState<string[]>([])
+   const [selectedSetores, setSelectedSetores] = useState<string[]>([])
+   const [perfil, setPerfil] = useState<string>("")
+
+   const loadData = async () => {
+    setIsLoading(true)
+    const [usuariosData, unidadesResult, setoresResult] = await Promise.all([
+      getUsuarios(),
+      getUnidades(),
+      getSetores()
+    ])
+    setUsuarios(usuariosData)
+    setUnidades(unidadesResult.data)
+    setSetores(setoresResult.data || [])
+    setIsLoading(false)
+  }
 
    useEffect(() => {
-     loadUsuarios()
+     loadData()
    }, [])
  
-   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => { 
+   const handleCreateSubmit = async (e: React.FormEvent<HTMLFormElement>) => { 
      e.preventDefault() 
      setIsSubmitting(true) 
      
      const formData = new FormData(e.currentTarget)
+     selectedUnidades.forEach(id => formData.append('unidadesIds', id))
+     selectedSetores.forEach(id => formData.append('setoresIds', id))
      const result = await createUsuario(formData)
 
      if (result.success) {
-       setOpen(false)
-       loadUsuarios()
+       setOpenCreate(false)
+       setSelectedUnidades([])
+       setSelectedSetores([])
+       setPerfil("")
+       loadData()
      } else {
        alert(result.error)
      }
      setIsSubmitting(false)
    } 
- 
+
+   const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => { 
+     e.preventDefault() 
+     if (!editingUsuario) return
+     setIsSubmitting(true) 
+     
+     const formData = new FormData(e.currentTarget)
+     selectedUnidades.forEach(id => formData.append('unidadesIds', id))
+     selectedSetores.forEach(id => formData.append('setoresIds', id))
+     const result = await updateUsuario(editingUsuario.id, formData)
+
+     if (result.success) {
+       setOpenEdit(false)
+       setEditingUsuario(null)
+       setSelectedUnidades([])
+       setSelectedSetores([])
+       setPerfil("")
+       loadData()
+     } else {
+       alert(result.error)
+     }
+     setIsSubmitting(false)
+   } 
+
+   const openEditDialog = (usuario: Usuario) => {
+     setEditingUsuario(usuario)
+     setPerfil(usuario.perfil)
+     setSelectedUnidades(usuario.unidadesAcesso.map(a => a.unidade.id))
+     setSelectedSetores(usuario.setoresAcesso.map(a => a.setor.id))
+     setOpenEdit(true)
+   }
+
+   const toggleUnidade = (id: string) => {
+     setSelectedUnidades(prev => 
+       prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
+     )
+   }
+
+   const toggleSetor = (id: string) => {
+     setSelectedSetores(prev => 
+       prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+     )
+   }
+
+   const filteredSetores = perfil !== 'Administrador' 
+     ? setores.filter(s => selectedUnidades.includes(s.unidadeId))
+     : []
+
    return ( 
      <motion.div 
        variants={container} 
@@ -125,20 +208,24 @@ import { BottomNavigation } from "@/components/BottomNavigation"
          </div> 
          
          {/* Modal de Cadastro de Usuário */} 
-         <Dialog open={open} onOpenChange={setOpen}> 
-           <DialogTrigger 
-             nativeButton={false}
-             render={
+         <Dialog open={openCreate} onOpenChange={(isOpen) => {
+           setOpenCreate(isOpen)
+           if (!isOpen) {
+             setSelectedUnidades([])
+             setSelectedSetores([])
+             setPerfil("")
+           }
+         }}> 
+           <DialogTrigger asChild>
                <Button
                  className="sm:w-auto w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white font-black uppercase tracking-widest rounded-full px-8 h-12 shadow-[0_8px_30px_rgba(79,70,229,0.3)] hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2" 
                > 
                  <UserPlus className="h-5 w-5" /> 
                  Novo Usuário 
                </Button>
-             }
-           /> 
-           <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] border-none shadow-2xl p-8 bg-white"> 
-             <form onSubmit={handleSubmit} className="space-y-6"> 
+           </DialogTrigger>
+           <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto rounded-[2.5rem] border-none shadow-2xl p-8 bg-white"> 
+             <form onSubmit={handleCreateSubmit} className="space-y-6"> 
                <DialogHeader> 
                  <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 border border-blue-100 shadow-[0_0_15px_rgba(37,99,235,0.1)]"> 
                    <ShieldCheck className="h-6 w-6 text-blue-600" /> 
@@ -150,38 +237,91 @@ import { BottomNavigation } from "@/components/BottomNavigation"
                    Defina os dados e o nível de acesso ao Rota de Incêndio. 
                  </DialogDescription> 
                </DialogHeader> 
- 
+
                <div className="space-y-5 mt-4"> 
                  <div className="space-y-2"> 
-                   <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Completo</label> 
-                   <Input name="nome" placeholder="Ex: Herich Marcelo" required className="rounded-xl border-slate-200 bg-slate-50 font-bold h-12 focus-visible:ring-blue-600 transition-all" /> 
+                   <Label htmlFor="nome" className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Completo</Label> 
+                   <Input id="nome" name="nome" placeholder="Ex: Herich Marcelo" required className="rounded-xl border-slate-200 bg-slate-50 font-bold h-12 focus-visible:ring-blue-600 transition-all" /> 
                  </div> 
                  
                  <div className="space-y-2"> 
-                   <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">E-mail Corporativo</label> 
-                   <Input name="email" type="email" placeholder="usuario@belloalimentos.com" required className="rounded-xl border-slate-200 bg-slate-50 font-bold h-12 focus-visible:ring-blue-600 transition-all" /> 
+                   <Label htmlFor="email" className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">E-mail Corporativo</Label> 
+                   <Input id="email" name="email" type="email" placeholder="usuario@belloalimentos.com" required className="rounded-xl border-slate-200 bg-slate-50 font-bold h-12 focus-visible:ring-blue-600 transition-all" /> 
+                 </div>
+
+                 <div className="space-y-2"> 
+                   <Label htmlFor="senha" className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Senha de Acesso</Label> 
+                   <div className="relative">
+                     <Lock className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+                     <Input id="senha" name="senha" type="password" placeholder="••••••••" required className="pl-12 rounded-xl border-slate-200 bg-slate-50 font-bold h-12 focus-visible:ring-blue-600 transition-all" /> 
+                   </div>
                  </div> 
 
                  <div className="space-y-2"> 
-                   <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Senha de Acesso</label> 
-                   <div className="relative">
-                     <Lock className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
-                     <Input name="senha" type="password" placeholder="••••••••" required className="pl-12 rounded-xl border-slate-200 bg-slate-50 font-bold h-12 focus-visible:ring-blue-600 transition-all" /> 
-                   </div>
-                 </div> 
- 
-                 <div className="space-y-2"> 
-                   <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Nível de Hierarquia (Cargo)</label> 
-                   <select name="perfil" required className="w-full rounded-xl border border-slate-200 bg-slate-50 font-bold h-12 px-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer"> 
-                     <option value="" disabled selected>Selecione a permissão...</option> 
+                   <Label htmlFor="perfil" className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Nível de Hierarquia (Cargo)</Label> 
+                   <select 
+                     id="perfil"
+                     name="perfil" 
+                     required 
+                     value={perfil}
+                     onChange={(e) => {
+                       setPerfil(e.target.value)
+                       setSelectedUnidades([])
+                       setSelectedSetores([])
+                     }}
+                     className="w-full rounded-xl border border-slate-200 bg-slate-50 font-bold h-12 px-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer" 
+                   > 
+                     <option value="" disabled>Selecione a permissão...</option> 
                      <option value="Administrador">🔥 Bombeiro (Admin - Acesso Total)</option> 
                      <option value="Gestor">👁️ Técnico de Segurança (Auditor - Somente Leitura)</option> 
                      <option value="Inspetor">📋 Brigadista (Acesso restrito a Vistorias)</option> 
                      <option value="SESMT">🛡️ SESMT (Gestão de Segurança)</option> 
                    </select> 
-                 </div> 
+                 </div>
+
+                 {perfil && perfil !== 'Administrador' && (
+                   <>
+                     <div className="space-y-2">
+                       <Label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Unidades de Acesso</Label>
+                       <div className="space-y-2 max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50">
+                         {unidades.map((unidade) => (
+                           <label key={unidade.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                             <input 
+                               type="checkbox" 
+                               checked={selectedUnidades.includes(unidade.id)}
+                               onChange={() => toggleUnidade(unidade.id)}
+                               className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
+                             />
+                             <Building2 className="h-4 w-4 text-slate-400" />
+                             <span className="font-bold text-slate-700">{unidade.nome}</span>
+                           </label>
+                         ))}
+                       </div>
+                     </div>
+
+                     {selectedUnidades.length > 0 && (
+                       <div className="space-y-2">
+                         <Label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Setores de Acesso</Label>
+                         <div className="space-y-2 max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50">
+                           {filteredSetores.map((setor) => (
+                             <label key={setor.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                               <input 
+                                 type="checkbox" 
+                                 checked={selectedSetores.includes(setor.id)}
+                                 onChange={() => toggleSetor(setor.id)}
+                                 className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
+                               />
+                               <DoorOpen className="h-4 w-4 text-slate-400" />
+                               <span className="font-bold text-slate-700">{setor.nome}</span>
+                             </label>
+                           ))}
+                         </div>
+                       </div>
+                     )}
+                   </>
+                 )}
                </div> 
- 
+
                <DialogFooter className="mt-8"> 
                  <Button 
                    type="submit" 
@@ -193,9 +333,132 @@ import { BottomNavigation } from "@/components/BottomNavigation"
                </DialogFooter> 
              </form> 
            </DialogContent> 
-         </Dialog> 
+         </Dialog>
+
+         {/* Modal de Edição de Usuário */}
+         <Dialog open={openEdit} onOpenChange={(isOpen) => {
+           setOpenEdit(isOpen)
+           if (!isOpen) {
+             setEditingUsuario(null)
+             setSelectedUnidades([])
+             setSelectedSetores([])
+             setPerfil("")
+           }
+         }}>
+           {editingUsuario && (
+             <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto rounded-[2.5rem] border-none shadow-2xl p-8 bg-white"> 
+               <form onSubmit={handleEditSubmit} className="space-y-6"> 
+                 <DialogHeader> 
+                   <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 border border-blue-100 shadow-[0_0_15px_rgba(37,99,235,0.1)]"> 
+                     <Pencil className="h-6 w-6 text-blue-600" /> 
+                   </div> 
+                   <DialogTitle className="text-2xl font-black text-slate-800 uppercase tracking-tighter"> 
+                     Editar Colaborador 
+                   </DialogTitle> 
+                   <DialogDescription className="font-bold text-slate-400"> 
+                     Atualize os dados e o nível de acesso do colaborador.
+                   </DialogDescription> 
+                 </DialogHeader> 
+
+                 <div className="space-y-5 mt-4"> 
+                   <div className="space-y-2"> 
+                     <Label htmlFor="edit-nome" className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Nome Completo</Label> 
+                     <Input id="edit-nome" name="nome" defaultValue={editingUsuario.nome} required className="rounded-xl border-slate-200 bg-slate-50 font-bold h-12 focus-visible:ring-blue-600 transition-all" /> 
+                   </div> 
+                   
+                   <div className="space-y-2"> 
+                     <Label htmlFor="edit-email" className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">E-mail Corporativo</Label> 
+                     <Input id="edit-email" name="email" type="email" defaultValue={editingUsuario.email} required className="rounded-xl border-slate-200 bg-slate-50 font-bold h-12 focus-visible:ring-blue-600 transition-all" /> 
+                   </div>
+
+                   <div className="space-y-2"> 
+                     <Label htmlFor="edit-senha" className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Nova Senha (deixe em branco para manter)</Label> 
+                     <div className="relative">
+                       <Lock className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+                       <Input id="edit-senha" name="senha" type="password" placeholder="••••••••" className="pl-12 rounded-xl border-slate-200 bg-slate-50 font-bold h-12 focus-visible:ring-blue-600 transition-all" /> 
+                     </div>
+                   </div> 
+
+                   <div className="space-y-2"> 
+                     <Label htmlFor="edit-perfil" className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Nível de Hierarquia (Cargo)</Label> 
+                     <select 
+                       id="edit-perfil"
+                       name="perfil" 
+                       required 
+                       value={perfil}
+                       onChange={(e) => {
+                         setPerfil(e.target.value)
+                         setSelectedUnidades([])
+                         setSelectedSetores([])
+                       }}
+                       className="w-full rounded-xl border border-slate-200 bg-slate-50 font-bold h-12 px-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all appearance-none cursor-pointer" 
+                     > 
+                       <option value="" disabled>Selecione a permissão...</option> 
+                       <option value="Administrador">🔥 Bombeiro (Admin - Acesso Total)</option> 
+                       <option value="Gestor">👁️ Técnico de Segurança (Auditor - Somente Leitura)</option> 
+                       <option value="Inspetor">📋 Brigadista (Acesso restrito a Vistorias)</option> 
+                       <option value="SESMT">🛡️ SESMT (Gestão de Segurança)</option> 
+                     </select> 
+                   </div>
+
+                   {perfil && perfil !== 'Administrador' && (
+                     <>
+                       <div className="space-y-2">
+                         <Label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Unidades de Acesso</Label>
+                         <div className="space-y-2 max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50">
+                           {unidades.map((unidade) => (
+                             <label key={unidade.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                               <input 
+                                 type="checkbox" 
+                                 checked={selectedUnidades.includes(unidade.id)}
+                                 onChange={() => toggleUnidade(unidade.id)}
+                                 className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
+                               />
+                               <Building2 className="h-4 w-4 text-slate-400" />
+                               <span className="font-bold text-slate-700">{unidade.nome}</span>
+                             </label>
+                           ))}
+                         </div>
+                       </div>
+
+                       {selectedUnidades.length > 0 && (
+                         <div className="space-y-2">
+                           <Label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Setores de Acesso</Label>
+                           <div className="space-y-2 max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50">
+                             {filteredSetores.map((setor) => (
+                               <label key={setor.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                                 <input 
+                                   type="checkbox" 
+                                   checked={selectedSetores.includes(setor.id)}
+                                   onChange={() => toggleSetor(setor.id)}
+                                   className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
+                                 />
+                                 <DoorOpen className="h-4 w-4 text-slate-400" />
+                                 <span className="font-bold text-slate-700">{setor.nome}</span>
+                               </label>
+                             ))}
+                           </div>
+                         </div>
+                       )}
+                     </>
+                   )}
+                 </div> 
+
+                 <DialogFooter className="mt-8"> 
+                   <Button 
+                     type="submit" 
+                     disabled={isSubmitting} 
+                     className="w-full h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white text-sm font-black uppercase tracking-widest shadow-[0_8px_25px_rgba(79,70,229,0.3)] transition-all" 
+                   > 
+                     {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Salvar Alterações"} 
+                   </Button> 
+                 </DialogFooter> 
+               </form> 
+             </DialogContent> 
+           )}
+         </Dialog>
        </div> 
- 
+
        {/* Cards Explicativos de Hierarquia */} 
        <div className="grid gap-6 md:grid-cols-4"> 
          {Object.entries(ROLES).map(([key, role]) => ( 
@@ -223,7 +486,7 @@ import { BottomNavigation } from "@/components/BottomNavigation"
            </motion.div> 
          ))} 
        </div> 
- 
+
        {/* Lista de Usuários */} 
        <motion.div variants={item} className="space-y-4"> 
          <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-4 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.02)]"> 
@@ -239,7 +502,7 @@ import { BottomNavigation } from "@/components/BottomNavigation"
              Filtrar Cargo 
            </Button> 
          </div> 
- 
+
          <div className="grid grid-cols-1 gap-4"> 
            {isLoading ? (
              <div className="flex items-center justify-center py-12">
@@ -259,9 +522,19 @@ import { BottomNavigation } from "@/components/BottomNavigation"
                    <div className="truncate"> 
                      <h4 className="font-black text-slate-800 tracking-tight truncate">{user.nome}</h4> 
                      <p className="text-xs font-bold text-slate-400 truncate">{user.email}</p> 
+                     {user.perfil !== 'Administrador' && (
+                       <div className="flex flex-wrap gap-1 mt-1">
+                         {user.unidadesAcesso.map(a => (
+                           <Badge key={a.unidade.id} className="bg-blue-50 text-blue-600 border-none font-black text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-lg">
+                             <Building2 className="h-3 w-3 mr-1" />
+                             {a.unidade.nome}
+                           </Badge>
+                         ))}
+                       </div>
+                     )}
                    </div> 
                  </div> 
- 
+
                  <div className="w-full lg:w-1/3 flex lg:justify-center"> 
                    <Badge 
                      className="border-none font-black text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm" 
@@ -271,7 +544,7 @@ import { BottomNavigation } from "@/components/BottomNavigation"
                      {roleInfo.nome} 
                    </Badge> 
                  </div> 
- 
+
                  <div className="w-full lg:w-1/3 flex items-center justify-between lg:justify-end gap-4"> 
                    <div className="flex items-center gap-2"> 
                      <div className={`h-2.5 w-2.5 rounded-full ${isActive ? 'bg-[#00e676] shadow-[0_0_8px_#00e676]' : 'bg-slate-300'}`} /> 
@@ -279,19 +552,29 @@ import { BottomNavigation } from "@/components/BottomNavigation"
                        Ativo 
                      </span> 
                    </div> 
-                   <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-10 w-10 rounded-xl hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
-                    onClick={async () => {
-                      if (confirm('Deseja realmente excluir este usuário?')) {
-                        await deleteUsuario(user.id);
-                        loadUsuarios();
-                      }
-                    }}
-                   > 
-                     <MoreVertical className="h-5 w-5" /> 
-                   </Button> 
+                   <div className="flex items-center gap-2">
+                     <Button 
+                       variant="ghost" 
+                       size="icon" 
+                       className="h-10 w-10 rounded-xl hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
+                       onClick={() => openEditDialog(user)}
+                     > 
+                       <Pencil className="h-5 w-5" /> 
+                     </Button>
+                     <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-10 w-10 rounded-xl hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                      onClick={async () => {
+                        if (confirm('Deseja realmente excluir este usuário?')) {
+                          await deleteUsuario(user.id);
+                          loadData();
+                        }
+                      }}
+                     > 
+                       <Trash2 className="h-5 w-5" /> 
+                     </Button>
+                   </div>
                  </div> 
                </div> 
              ) 
