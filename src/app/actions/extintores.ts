@@ -412,3 +412,46 @@ export async function getDashboardData() {
     return null;
   }
 }
+
+export async function getRelatoriosExtintores(userId: string) {
+  try {
+    let whereClause: any = {};
+
+    // Buscar o usuário para verificar o perfil e acessos
+    const user = await prisma.usuario.findUnique({
+      where: { id: userId },
+      include: {
+        unidadesAcesso: true,
+        setoresAcesso: true,
+      },
+    });
+
+    if (user && user.perfil !== 'Administrador') {
+      const unidadesAcessoIds = user.unidadesAcesso.map(a => a.unidadeId);
+      const setoresAcessoIds = user.setoresAcesso.map(a => a.setorId);
+
+      whereClause = {
+        unidadeId: { in: unidadesAcessoIds },
+        setorId: { in: setoresAcessoIds }
+      };
+    }
+
+    return await prisma.extintor.findMany({
+      where: whereClause,
+      include: {
+        unidade: true,
+        setor: true,
+        inspecoes: {
+          include: {
+            usuario: true,
+          },
+          orderBy: { dataInspecao: 'desc' },
+        },
+      },
+      orderBy: { codigo: 'asc' },
+    });
+  } catch (error) {
+    console.error('Error fetching relatorios extintores:', error);
+    return [];
+  }
+}
