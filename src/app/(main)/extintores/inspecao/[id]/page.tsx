@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -26,6 +27,7 @@ const itemAnim = {
 
 export default function InspecaoExtintorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const { data: session } = useSession()
   const router = useRouter()
   const [isSubmitting, setIsLoading] = useState(false)
   const [extintor, setExtintor] = useState<any>(null)
@@ -37,12 +39,13 @@ export default function InspecaoExtintorPage({ params }: { params: Promise<{ id:
 
   useEffect(() => {
     async function loadData() {
-      const data = await getExtintorComHistorico(id)
+      if (!session?.user?.id) return
+      const data = await getExtintorComHistorico(id, session.user.id)
       setExtintor(data)
       setIsDataLoading(false)
     }
     loadData()
-  }, [id])
+  }, [id, session?.user?.id])
 
   // Gerencia o upload de fotos por item
   const handleItemPhotoChange = (itemId: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,11 +67,15 @@ export default function InspecaoExtintorPage({ params }: { params: Promise<{ id:
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (!session?.user?.id) {
+      alert("Você precisa estar logado para realizar uma inspeção!")
+      return
+    }
     setIsLoading(true)
 
     const formData = new FormData(e.currentTarget)
     formData.append('extintorId', id)
-    formData.append('usuarioId', 'temp-user-id')
+    formData.append('usuarioId', session.user.id)
     if (dataInspecao) {
       formData.append('dataInspecao', format(dataInspecao, 'yyyy-MM-dd'))
     }
@@ -146,7 +153,7 @@ export default function InspecaoExtintorPage({ params }: { params: Promise<{ id:
         {/* Informações do Usuário Logado */}
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
-            <p className="text-[13px] font-black text-slate-800 uppercase tracking-tighter leading-none">INSPETOR BELLO</p>
+            <p className="text-[13px] font-black text-slate-800 uppercase tracking-tighter leading-none">INSPETOR {session?.user?.name || "USUÁRIO"}</p>
             <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-0.5">SESMT ALIMENTOS</p>
           </div>
           <div className="h-10 w-10 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 shadow-sm">

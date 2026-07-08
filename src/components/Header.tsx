@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Menu, Bell, Flame } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar } from "./Avatar"
@@ -11,6 +12,40 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, className }: HeaderProps) {
+  // 1. Inicializa ambos os estados para receberem dados dinâmicos
+  const [userName, setUserName] = useState("Carregando...")
+  const [userRole, setUserRole] = useState("Carregando...")
+
+  // 2. Simula a busca dos dados do usuário logado
+  useEffect(() => {
+    async function loadUserData() {
+      try {
+        /* 
+          AQUI ENTRA A SUA LÓGICA DE BANCO DE DADOS (API / Supabase / NextAuth).
+          Você deve puxar não só o nome, mas também o cargo da tabela de usuários.
+        */
+        
+        // Simulando a resposta do seu banco baseada na imagem que você enviou:
+        const mockUserData = {
+          nome: "CLEISON RAIMUNDO DO NASCIMENTO",
+          cargo: "BRIGADISTA"
+        }
+
+        // 3. Atualiza os estados com os dados recebidos
+        setUserName(mockUserData.nome)
+        setUserRole(mockUserData.cargo)
+
+      } catch (error) {
+        console.error("Erro ao carregar usuário:", error)
+        // Valores de fallback (segurança) caso a API falhe
+        setUserName("Usuário Logado")
+        setUserRole("Colaborador") 
+      }
+    }
+
+    loadUserData()
+  }, [])
+
   return (
     <header className={cn(
       "bg-white border-b border-[#E5E7EB] sticky top-0 z-40",
@@ -52,8 +87,9 @@ export function Header({ onMenuClick, className }: HeaderProps) {
 
           <div className="flex items-center gap-3 pl-3 border-l border-[#E5E7EB]">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-slate-900">Inspetor Bello</p>
-              <p className="text-xs text-slate-500 font-medium">SESMT Alimentos</p>
+              {/* 4. Renderiza as variáveis de estado diretamente no JSX */}
+              <p className="text-sm font-bold text-slate-900 uppercase">{userName}</p>
+              <p className="text-xs text-emerald-500 font-bold uppercase">{userRole}</p>
             </div>
             <Avatar size="md" />
           </div>
