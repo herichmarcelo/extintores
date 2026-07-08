@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { getExtintores, deleteExtintor, getUnidades } from "@/app/actions/extintores"
+import { useSession } from "next-auth/react"
 import { 
   RefreshCw, 
   Building2, 
@@ -49,12 +50,15 @@ interface Extintor {
   capacidade: string
   validadeCarga: Date | string
   unidadeId: string
+  setorId?: string | null
   foto?: string | null
   unidade: { id: string; nome: string }
+  setor?: { id: string; nome: string } | null
   inspecoes?: Array<{ status: string; dataInspecao?: Date | string }>
 }
 
 export default function ExtintoresPage() {
+  const { data: session, status } = useSession()
   const [extintores, setExtintores] = useState<Extintor[]>([])
   const [filteredExtintores, setFilteredExtintores] = useState<Extintor[]>([])
   const [unidades, setUnidades] = useState<any[]>([])
@@ -82,17 +86,27 @@ export default function ExtintoresPage() {
 
   useEffect(() => {
     async function fetchData() {
-      const [extintoresData, unidadesData] = await Promise.all([
-        getExtintores(),
-        getUnidades()
-      ])
+      if (status !== 'authenticated' || !session?.user?.id) return
+      
+      const unidadesData = await getUnidades()
+      
+      setUnidades(unidadesData.data || [])
+      
+      // Fetch extintores with filtering on backend using real user ID
+      const extintoresData = await getExtintores(session.user.id)
+      
       setExtintores(extintoresData as unknown as Extintor[])
       setFilteredExtintores(extintoresData as unknown as Extintor[])
-      setUnidades(unidadesData.data || [])
       setLoading(false)
     }
-    fetchData()
-  }, [])
+    
+    if (status === 'loading') {
+      // Keep loading state
+      setLoading(true)
+    } else {
+      fetchData()
+    }
+  }, [status, session?.user?.id])
 
   useEffect(() => {
     let filtered = [...extintores]
@@ -122,7 +136,7 @@ export default function ExtintoresPage() {
     if (selectedUnidade !== "todos") {
       filtered = filtered.filter((e) => e.unidadeId === selectedUnidade)
     }
-
+    
     setFilteredExtintores(filtered)
     setCurrentPage(1)
     setExpandedCardId(null) // Fecha menus ao filtrar
@@ -179,11 +193,11 @@ export default function ExtintoresPage() {
     setExpandedCardId(expandedCardId === id ? null : id)
   }
 
-  const total = extintores.length
-  const vencidos = extintores.filter((e) => getStatus(e) === "vencido").length
-  const proximos = extintores.filter((e) => getStatus(e) === "vencendo").length
-  const emDia = extintores.filter((e) => getStatus(e) === "em-dia" || getStatus(e) === "inspecionado").length
-  const inspecoesHoje = extintores.filter((e) => {
+  const total = filteredExtintores.length
+  const vencidos = filteredExtintores.filter((e) => getStatus(e) === "vencido").length
+  const proximos = filteredExtintores.filter((e) => getStatus(e) === "vencendo").length
+  const emDia = filteredExtintores.filter((e) => getStatus(e) === "em-dia" || getStatus(e) === "inspecionado").length
+  const inspecoesHoje = filteredExtintores.filter((e) => {
     const ultima = e.inspecoes?.[0]
     if (!ultima?.dataInspecao) return false
     const data = new Date(ultima.dataInspecao)
@@ -280,7 +294,7 @@ export default function ExtintoresPage() {
                         <div>
                           <h3 className="text-xl font-black text-slate-900 leading-none mb-1">{extintor.codigo}</h3>
                           <p className="text-xs font-bold text-slate-900 uppercase tracking-wide">{extintor.localizacao}</p>
-                          <p className="text-[10px] text-slate-500 font-medium mt-0.5">{extintor.unidade.nome}</p>
+                          <p className="text-[10px] text-slate-500 font-medium mt-0.5">{extintor.unidade.nome} {extintor.setor ? `• ${extintor.setor.nome}` : ''}</p>
                         </div>
                         <div className="flex items-center gap-1 -mt-1">
                           {status === 'vencido' && (
@@ -416,7 +430,7 @@ export default function ExtintoresPage() {
                 <SearchBar onSearch={setSearchQuery} />
               </div>
               
-              {/* CAIXA 2: Select travado com a mesma altura e largura que você definiu */}
+              {/* CAIXA 2: Select unidade */}
               <div className="w-80 h-12">
                 <SelectWithIcon
                   icon={<Building2 className="w-5 h-5" />}
@@ -460,7 +474,7 @@ export default function ExtintoresPage() {
               foto: e.foto || undefined,
               status: getStatus(e),
               localizacao: e.localizacao,
-              unidade: e.unidade.nome,
+              unidade: e.unidade.nome + (e.setor ? ` • ${e.setor.nome}` : ''),
               tipo: e.tipo,
               capacidade: e.capacidade,
               validade: formatDate(e.validadeCarga),

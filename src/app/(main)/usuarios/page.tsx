@@ -209,21 +209,21 @@ import { BottomNavigation } from "@/components/BottomNavigation"
          
          {/* Modal de Cadastro de Usuário */} 
          <Dialog open={openCreate} onOpenChange={(isOpen) => {
-           setOpenCreate(isOpen)
-           if (!isOpen) {
-             setSelectedUnidades([])
-             setSelectedSetores([])
-             setPerfil("")
-           }
-         }}> 
-           <DialogTrigger asChild>
-               <Button
-                 className="sm:w-auto w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white font-black uppercase tracking-widest rounded-full px-8 h-12 shadow-[0_8px_30px_rgba(79,70,229,0.3)] hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2" 
-               > 
-                 <UserPlus className="h-5 w-5" /> 
-                 Novo Usuário 
-               </Button>
-           </DialogTrigger>
+          setOpenCreate(isOpen);
+          if (!isOpen) {
+            setSelectedUnidades([]);
+            setSelectedSetores([]);
+            setPerfil("");
+          }
+        }}>
+          <DialogTrigger>
+              <button
+                className="sm:w-auto w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white font-black uppercase tracking-widest rounded-full px-8 h-12 shadow-[0_8px_30px_rgba(79,70,229,0.3)] hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2"
+              >
+                <UserPlus className="h-5 w-5" />
+                Novo Usuário
+              </button>
+          </DialogTrigger>
            <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto rounded-[2.5rem] border-none shadow-2xl p-8 bg-white"> 
              <form onSubmit={handleCreateSubmit} className="space-y-6"> 
                <DialogHeader> 

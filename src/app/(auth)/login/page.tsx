@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { signIn } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -13,14 +14,26 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // Simulação de delay para UX
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    router.push("/dashboard")
+    setError("")
+
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    })
+
+    if (result?.error) {
+      setError("E-mail ou senha incorretos")
+      setIsLoading(false)
+    } else {
+      router.push("/dashboard")
+    }
   }
 
   return (
@@ -57,6 +70,11 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-10 pt-6">
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 font-bold text-sm">
+              {error}
+            </div>
+            )}
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-3">
                 <Label htmlFor="email" className="text-slate-800 font-black text-xs uppercase tracking-widest ml-1">E-mail</Label>

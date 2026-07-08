@@ -128,15 +128,13 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
       {trigger ? (
         <DialogTrigger>{trigger}</DialogTrigger>
       ) : !extintor && (
-        <DialogTrigger
-          render={
-            <Button
-              className="w-full bg-[#B11226] hover:bg-[#9a0f1f] text-white font-bold rounded-2xl h-12 shadow-sm transition-all flex items-center justify-center gap-2"
-            />
-          }
-        >
-          <Plus className="h-6 w-6" />
-          Novo Extintor
+        <DialogTrigger>
+          <button
+            className="w-full bg-[#B11226] hover:bg-[#9a0f1f] text-white font-bold rounded-2xl h-12 shadow-sm transition-all flex items-center justify-center gap-2"
+          >
+            <Plus className="h-6 w-6" />
+            Novo Extintor
+          </button>
         </DialogTrigger>
       )}
       <DialogContent className="sm:max-w-md rounded-2xl border-[#E5E7EB] shadow-lg p-6">

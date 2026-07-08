@@ -65,21 +65,47 @@ export async function createInspecao(formData: FormData) {
     const extintorId = formData.get('extintorId') as string;
     const usuarioId = formData.get('usuarioId') as string;
     
-    // Buscar ou criar um usuário temporário se não existir (para evitar erro de FK)
-    let user = await prisma.usuario.findFirst({
-      where: { id: usuarioId }
+    // Buscar usuário e verificar permissões
+    const user = await prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      include: {
+        unidadesAcesso: true,
+        setoresAcesso: true,
+      },
     });
 
     if (!user) {
-      user = await prisma.usuario.create({
-        data: {
-          id: usuarioId,
-          nome: 'Inspetor Bello',
-          email: 'inspetor@belloalimentos.com.br',
-          senha: '123',
-          perfil: 'Inspetor'
+      return { success: false, error: 'Usuário não encontrado.' };
+    }
+
+    // Buscar o extintor para verificar acesso
+    const extintor = await prisma.extintor.findUnique({
+      where: { id: extintorId },
+    });
+
+    if (!extintor) {
+      return { success: false, error: 'Extintor não encontrado.' };
+    }
+
+    // Verificar permissões se não for Administrador
+    if (user.perfil !== 'Administrador') {
+      const unidadesAcessoIds = user.unidadesAcesso.map(a => a.unidadeId);
+      const setoresAcessoIds = user.setoresAcesso.map(a => a.setorId);
+
+      // Verificar se tem acesso à unidade
+      const temAcessoUnidade = unidadesAcessoIds.includes(extintor.unidadeId);
+      
+      if (!temAcessoUnidade) {
+        return { success: false, error: 'Você não tem permissão para acessar este extintor.' };
+      }
+
+      // Verificar acesso ao setor se o extintor estiver em um setor
+      if (extintor.setorId) {
+        const temAcessoSetor = setoresAcessoIds.includes(extintor.setorId);
+        if (!temAcessoSetor) {
+          return { success: false, error: 'Você não tem permissão para acessar este extintor.' };
         }
-      });
+      }
     }
 
     const status = formData.get('status') as string;
@@ -144,9 +170,35 @@ export async function getUnidades() {
   }
 }
 
-export async function getExtintores() {
+export async function getExtintores(userId?: string) {
   try {
+    if (!userId) return [];
+    
+    let whereClause: any = {};
+
+    // Buscar o usuário para verificar o perfil e acessos
+    const user = await prisma.usuario.findUnique({
+      where: { id: userId },
+      include: {
+        unidadesAcesso: true,
+        setoresAcesso: true,
+      },
+    });
+
+    if (user && user.perfil !== 'Administrador') {
+      // Para perfis restritos (Brigadista/Inspetor, Gestor, SESMT), aplicar filtros
+      const unidadesAcessoIds = user.unidadesAcesso.map(a => a.unidadeId);
+      const setoresAcessoIds = user.setoresAcesso.map(a => a.setorId);
+
+      // Construir cláusula WHERE estrita
+      whereClause = {
+        unidadeId: { in: unidadesAcessoIds },
+        setorId: { in: setoresAcessoIds }
+      };
+    }
+
     return await prisma.extintor.findMany({
+      where: whereClause,
       include: {
         unidade: true,
         setor: true,
@@ -163,12 +215,54 @@ export async function getExtintores() {
   }
 }
 
-export async function getExtintorComHistorico(id: string) {
+export async function getExtintorComHistorico(id: string, userId?: string) {
   try {
+    if (!userId) return null;
+    
+    // Se um userId foi passado, verificar permissões
+    const user = await prisma.usuario.findUnique({
+      where: { id: userId },
+      include: {
+        unidadesAcesso: true,
+        setoresAcesso: true,
+      },
+    });
+
+    if (user && user.perfil !== 'Administrador') {
+      const unidadesAcessoIds = user.unidadesAcesso.map(a => a.unidadeId);
+      const setoresAcessoIds = user.setoresAcesso.map(a => a.setorId);
+
+      // Primeiro buscar o extintor para verificar acesso
+      const extintor = await prisma.extintor.findUnique({
+        where: { id },
+      });
+
+      if (!extintor) {
+        return null;
+      }
+
+      // Verificar acesso à unidade
+      const temAcessoUnidade = unidadesAcessoIds.includes(extintor.unidadeId);
+      
+      if (!temAcessoUnidade) {
+        return null;
+      }
+
+      // Verificar acesso ao setor
+      if (extintor.setorId) {
+        const temAcessoSetor = setoresAcessoIds.includes(extintor.setorId);
+        if (!temAcessoSetor) {
+          return null;
+        }
+      }
+    }
+
+    // Se tudo ok (ou usuário admin), retornar o extintor com histórico
     return await prisma.extintor.findUnique({
       where: { id },
       include: {
         unidade: true,
+        setor: true,
         inspecoes: {
           include: {
             usuario: true,
