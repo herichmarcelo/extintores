@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
@@ -37,18 +38,20 @@ const itemAnim = {
 
 export default function HistoricoExtintorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const { data: session } = useSession()
   const router = useRouter()
   const [extintor, setExtintor] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     async function loadData() {
-      const data = await getExtintorComHistorico(id)
+      if (!session?.user?.id) return
+      const data = await getExtintorComHistorico(id, session.user.id)
       setExtintor(data)
       setIsLoading(false)
     }
     loadData()
-  }, [id])
+  }, [id, session?.user?.id])
 
   if (isLoading) {
     return (
