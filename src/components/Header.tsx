@@ -6,40 +6,49 @@ import { Button } from "@/components/ui/button"
 import { Avatar } from "./Avatar"
 import { cn } from "@/lib/utils"
 
+// 1. IMPORTAÇÃO DO SUPABASE ATIVADA
+import { createClient } from "@supabase/supabase-js"
+
 interface HeaderProps {
   onMenuClick?: () => void
   className?: string
 }
 
 export function Header({ onMenuClick, className }: HeaderProps) {
-  // 1. Inicializa ambos os estados para receberem dados dinâmicos
   const [userName, setUserName] = useState("Carregando...")
   const [userRole, setUserRole] = useState("Carregando...")
 
-  // 2. Simula a busca dos dados do usuário logado
   useEffect(() => {
     async function loadUserData() {
       try {
-        /* 
-          AQUI ENTRA A SUA LÓGICA DE BANCO DE DADOS (API / Supabase / NextAuth).
-          Você deve puxar não só o nome, mas também o cargo da tabela de usuários.
-        */
-        
-        // Simulando a resposta do seu banco baseada na imagem que você enviou:
-        const mockUserData = {
-          nome: "CLEISON RAIMUNDO DO NASCIMENTO",
-          cargo: "BRIGADISTA"
+        // 2. BUSCA REAL NO BANCO DE DADOS
+        const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+        const { data: { session } } = await supabase.auth.getSession()
+
+        if (session?.user) {
+          const emailLogado = session.user.email
+          
+          const { data: usuario } = await supabase
+            .from('usuarios')
+            .select('nome, cargo')
+            .eq('email', emailLogado)
+            .single()
+
+          if (usuario) {
+            setUserName(usuario.nome)
+            setUserRole(usuario.cargo)
+          } else {
+            setUserName(emailLogado || "Usuário Logado")
+            setUserRole("Sem Cargo")
+          }
+        } else {
+          setUserName("Não Autenticado")
+          setUserRole("-")
         }
-
-        // 3. Atualiza os estados com os dados recebidos
-        setUserName(mockUserData.nome)
-        setUserRole(mockUserData.cargo)
-
       } catch (error) {
         console.error("Erro ao carregar usuário:", error)
-        // Valores de fallback (segurança) caso a API falhe
-        setUserName("Usuário Logado")
-        setUserRole("Colaborador") 
+        setUserName("Erro de conexão")
+        setUserRole("...")
       }
     }
 
@@ -87,8 +96,8 @@ export function Header({ onMenuClick, className }: HeaderProps) {
 
           <div className="flex items-center gap-3 pl-3 border-l border-[#E5E7EB]">
             <div className="text-right hidden sm:block">
-              {/* 4. Renderiza as variáveis de estado diretamente no JSX */}
-              <p className="text-sm font-bold text-slate-900 uppercase">{userName}</p>
+              {/* NOME E CARGO DINÂMICOS */}
+              <p className="text-sm font-bold text-slate-900 uppercase truncate max-w-[200px]">{userName}</p>
               <p className="text-xs text-emerald-500 font-bold uppercase">{userRole}</p>
             </div>
             <Avatar size="md" />
