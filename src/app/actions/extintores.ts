@@ -455,3 +455,75 @@ export async function getRelatoriosExtintores(userId: string) {
     return [];
   }
 }
+
+export async function updateInspecao(inspecaoId: string, userId: string, data: {
+  status: string;
+  observacao?: string;
+  sinalizacao: boolean;
+  manometro: boolean;
+  lacre: boolean;
+  mangueira: boolean;
+  pintura: boolean;
+  seloInmetro: boolean;
+  dataInspecao: Date;
+}) {
+  try {
+    // Check user permissions
+    const user = await prisma.usuario.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return { success: false, error: 'Usuário não encontrado' };
+    }
+
+    // Only allow Administrador or Bombeiro
+    if (user.perfil !== 'Administrador' && user.perfil !== 'Bombeiro') {
+      return { success: false, error: 'Você não tem permissão para editar inspeções' };
+    }
+
+    await prisma.inspecaoExtintor.update({
+      where: { id: inspecaoId },
+      data: {
+        ...data,
+        usuarioId: userId,
+      },
+    });
+
+    revalidatePath('/extintores');
+    revalidatePath('/relatorios');
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating inspecao:', error);
+    return { success: false, error: 'Falha ao atualizar inspeção' };
+  }
+}
+
+export async function deleteInspecao(inspecaoId: string, userId: string) {
+  try {
+    // Check user permissions
+    const user = await prisma.usuario.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return { success: false, error: 'Usuário não encontrado' };
+    }
+
+    // Only allow Administrador or Bombeiro
+    if (user.perfil !== 'Administrador' && user.perfil !== 'Bombeiro') {
+      return { success: false, error: 'Você não tem permissão para deletar inspeções' };
+    }
+
+    await prisma.inspecaoExtintor.delete({
+      where: { id: inspecaoId },
+    });
+
+    revalidatePath('/extintores');
+    revalidatePath('/relatorios');
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting inspecao:', error);
+    return { success: false, error: 'Falha ao deletar inspeção' };
+  }
+}
