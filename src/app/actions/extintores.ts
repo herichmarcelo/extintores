@@ -13,6 +13,7 @@ export async function createExtintor(formData: FormData) {
     const capacidade = formData.get('capacidade') as string;
     const validadeCarga = new Date(formData.get('validadeCarga') as string);
     const unidadeId = formData.get('unidadeId') as string;
+    const setorId = formData.get('setorId') as string || null;
     const fotoFile = formData.get('foto') as File | null;
 
     // Check for duplicate code in the same unit
@@ -44,6 +45,7 @@ export async function createExtintor(formData: FormData) {
         capacidade,
         validadeCarga,
         unidadeId,
+        setorId,
         foto: fotoUrl,
       },
     });
@@ -147,6 +149,7 @@ export async function getExtintores() {
     return await prisma.extintor.findMany({
       include: {
         unidade: true,
+        setor: true,
         inspecoes: {
           orderBy: { dataInspecao: 'desc' },
           take: 1,
@@ -188,6 +191,7 @@ export async function updateExtintor(id: string, formData: FormData) {
     const capacidade = formData.get('capacidade') as string;
     const validadeCarga = new Date(formData.get('validadeCarga') as string);
     const unidadeId = formData.get('unidadeId') as string;
+    const setorId = formData.get('setorId') as string || null;
     const fotoFile = formData.get('foto') as File | null;
 
     // Check for duplicate code in the same unit (excluding the current extintor)
@@ -221,6 +225,7 @@ export async function updateExtintor(id: string, formData: FormData) {
         capacidade,
         validadeCarga,
         unidadeId,
+        setorId,
         ...(fotoUrl !== undefined && { foto: fotoUrl }),
       },
     });

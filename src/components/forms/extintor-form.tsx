@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select"
 import { Camera, Loader2, Plus } from "lucide-react"
 import { createExtintor, getUnidades, updateExtintor } from "@/app/actions/extintores"
+import { getSetores } from "@/app/actions/setores"
 import { DatePicker } from "@/components/date-picker"
 import { format } from "date-fns"
 
@@ -33,6 +34,7 @@ interface Extintor {
   capacidade: string
   validadeCarga: Date | string
   unidadeId: string
+  setorId?: string | null
   foto?: string | null
 }
 
@@ -52,12 +54,20 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [unidades, setUnidades] = useState<any[]>([])
+  const [setores, setSetores] = useState<any[]>([])
+  const [selectedUnidadeId, setSelectedUnidadeId] = useState<string>("")
+  const [selectedSetorId, setSelectedSetorId] = useState<string>("")
   const [validadeCarga, setValidadeCarga] = useState<Date | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
     if (open) {
       getUnidades().then((result) => setUnidades(result.data))
+      getSetores().then((result) => {
+        if (result.success) {
+          setSetores(result.data)
+        }
+      })
       if (extintor?.foto) {
         setPreviewUrl(extintor.foto)
       }
@@ -66,9 +76,17 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
       } else {
         setValidadeCarga(null)
       }
+      if (extintor?.unidadeId) {
+        setSelectedUnidadeId(extintor.unidadeId)
+      }
+      if (extintor?.setorId) {
+        setSelectedSetorId(extintor.setorId)
+      }
     } else {
       setPreviewUrl(null)
       setValidadeCarga(null)
+      setSelectedUnidadeId("")
+      setSelectedSetorId("")
     }
   }, [open, extintor])
 
@@ -152,7 +170,12 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
               <Label htmlFor="unidadeId" className="text-xs font-bold text-slate-600">
                 Unidade
               </Label>
-              <Select name="unidadeId" required defaultValue={extintor?.unidadeId}>
+              <Select
+                name="unidadeId"
+                required
+                value={selectedUnidadeId}
+                onValueChange={setSelectedUnidadeId}
+              >
                 <SelectTrigger className="h-11 rounded-xl border-[#E5E7EB] bg-slate-50 focus:border-[#B11226] focus:ring-1 focus:ring-[#B11226]/20">
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
@@ -168,6 +191,27 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="setorId" className="text-xs font-bold text-slate-600">
+              Setor
+            </Label>
+            <Select name="setorId" value={selectedSetorId} onValueChange={setSelectedSetorId}>
+              <SelectTrigger className="h-11 rounded-xl border-[#E5E7EB] bg-slate-50 focus:border-[#B11226] focus:ring-1 focus:ring-[#B11226]/20">
+                <SelectValue placeholder="Selecione um setor (opcional)" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-[#E5E7EB]">
+                {setores.filter((s: any) => !selectedUnidadeId || s.unidadeId === selectedUnidadeId).map((s: any) => (
+                  <SelectItem key={s.id} value={s.id} className="font-medium">
+                    {s.nome}
+                  </SelectItem>
+                ))}
+                {setores.filter((s: any) => !selectedUnidadeId || s.unidadeId === selectedUnidadeId).length === 0 && (
+                  <p className="p-3 text-xs text-slate-400">Nenhum setor cadastrado</p>
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

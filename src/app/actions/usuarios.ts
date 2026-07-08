@@ -7,6 +7,10 @@ export async function getUsuarios() {
   try {
     return await prisma.usuario.findMany({
       orderBy: { nome: 'asc' },
+      include: {
+        unidadesAcesso: { include: { unidade: true } },
+        setoresAcesso: { include: { setor: true } },
+      },
     });
   } catch (error) {
     console.error('Error fetching usuarios:', error);
@@ -20,6 +24,8 @@ export async function createUsuario(formData: FormData) {
     const email = formData.get('email') as string;
     const senha = formData.get('senha') as string;
     const perfil = formData.get('perfil') as string;
+    const unidadesIds = formData.getAll('unidadesIds') as string[];
+    const setoresIds = formData.getAll('setoresIds') as string[];
 
     // Verificar se o email já existe
     const existingUser = await prisma.usuario.findUnique({
@@ -36,6 +42,14 @@ export async function createUsuario(formData: FormData) {
         email,
         senha, // Nota: Em um ambiente de produção, a senha deve ser hasheada (ex: bcrypt)
         perfil,
+        ...(perfil !== 'Administrador' && {
+          unidadesAcesso: {
+            create: unidadesIds.map((unidadeId) => ({ unidadeId })),
+          },
+          setoresAcesso: {
+            create: setoresIds.map((setorId) => ({ setorId })),
+          },
+        }),
       },
     });
 

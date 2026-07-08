@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Building2, MapPin, Flame, Droplets, Plus, Loader2, Activity, Pencil, Trash2 } from "lucide-react"
+import { Building2, MapPin, Flame, Droplets, Plus, Loader2, Activity, Pencil, Trash2, DoorOpen } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -289,7 +290,11 @@ export default function UnidadesPage() {
             )}
           </DialogContent>
         </Dialog>
+
+
       </div>
+
+
 
       {dbError && (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">
@@ -339,6 +344,16 @@ export default function UnidadesPage() {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
+                    <Link href={`/unidades/${unidade.id}/setores`}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 rounded-xl hover:bg-orange-50 text-slate-400 hover:text-[#ff6d00] transition-colors"
+                        title="Ver setores"
+                      >
+                        <DoorOpen className="h-4 w-4" />
+                      </Button>
+                    </Link>
                     <Button
                       variant="ghost"
                       size="icon"

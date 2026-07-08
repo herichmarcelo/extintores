@@ -22,6 +22,8 @@ model Usuario {
 
   inspecoesExtintor InspecaoExtintor[]
   inspecoesHidrante InspecaoHidrante[]
+  unidadesAcesso    UnidadeAcesso[]
+  setoresAcesso     SetorAcesso[]
 }
 
 model Unidade {
@@ -32,12 +34,46 @@ model Unidade {
 
   extintores Extintor[]
   hidrantes  Hidrante[]
+  setores    Setor[]
+  acessos    UnidadeAcesso[]
+}
+
+model Setor {
+  id        String  @id @default(uuid())
+  nome      String
+  unidadeId String
+  unidade   Unidade @relation(fields: [unidadeId], references: [id])
+
+  extintores Extintor[]
+  acessos    SetorAcesso[]
+}
+
+model UnidadeAcesso {
+  id        String  @id @default(uuid())
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  unidadeId String
+  unidade   Unidade @relation(fields: [unidadeId], references: [id])
+
+  @@unique([usuarioId, unidadeId])
+}
+
+model SetorAcesso {
+  id        String  @id @default(uuid())
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  setorId   String
+  setor     Setor @relation(fields: [setorId], references: [id])
+
+  @@unique([usuarioId, setorId])
 }
 
 model Extintor {
   id            String   @id @default(uuid())
   codigo        String
   localizacao   String
+  setorId       String?
+  setor         Setor?   @relation(fields: [setorId], references: [id])
   tipo          String
   capacidade    String
   validadeCarga DateTime
