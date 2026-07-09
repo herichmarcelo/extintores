@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET,
+  trustHost: true, // <--- COLOQUE ISSO AQUI
   adapter: PrismaAdapter(prisma),
   providers: [
     Credentials({
@@ -19,7 +20,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         const user = await prisma.usuario.findUnique({
-          where: { email: credentials.email },
+          where: { email: credentials.email as string },
         })
 
         if (!user) {
@@ -31,7 +32,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         try {
           const isHashed = user.senha.startsWith('$2a$') || user.senha.startsWith('$2b$') || user.senha.startsWith('$2y$')
           if (isHashed) {
-            passwordMatch = await bcrypt.compare(credentials.password, user.senha)
+            passwordMatch = await bcrypt.compare(credentials.password as string, user.senha)
           } else {
             passwordMatch = user.senha === credentials.password
           }
@@ -48,7 +49,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           id: user.id,
           name: user.nome,
           email: user.email,
-          image: user.image,
+          image: null,
           perfil: user.perfil,
         }
       },
