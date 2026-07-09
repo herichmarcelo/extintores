@@ -3,8 +3,10 @@ import Credentials from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import prisma from "./src/lib/prisma"
 import bcrypt from "bcryptjs"
+import authConfig from "./auth.config"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
   providers: [
     Credentials({
@@ -51,36 +53,4 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
-  session: { strategy: "jwt" },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
-        token.perfil = (user as any).perfil
-      }
-      return token
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string
-        session.user.perfil = token.perfil as string
-      }
-      return session
-    },
-    authorized({ request, auth }) {
-      // Check if user is authenticated for protected routes
-      const { pathname } = request.nextUrl
-      
-      // Public routes
-      if (pathname === "/login") {
-        return !auth ? true : Response.redirect(new URL("/dashboard", request.url))
-      }
-      
-      // All other routes require authentication
-      return !!auth
-    }
-  },
-  pages: {
-    signIn: "/login",
-  },
 })
