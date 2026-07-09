@@ -13,7 +13,9 @@ import {
   ShieldCheck, 
   Download, 
   CheckCircle2, 
-  SlidersHorizontal 
+  SlidersHorizontal,
+  Flame,
+  Droplets
 } from "lucide-react"
 import {
   Table,
@@ -50,6 +52,7 @@ import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { useSession } from "next-auth/react"
 import { getRelatoriosExtintores, getUnidades } from "@/app/actions/extintores"
+import { getRelatoriosHidrantes } from "@/app/actions/hidrantes"
 
 // Função auxiliar para converter Imagens em Base64
 const loadImageAsBase64 = async (url: string): Promise<string> => {
@@ -68,7 +71,7 @@ const loadImageAsBase64 = async (url: string): Promise<string> => {
   }
 }
 
-// Função auxiliar para verificar vencimento
+// Função auxiliar para verificar vencimento (apenas para extintores)
 const getStatusExtintor = (validade: Date | string) => {
   const dataValidade = new Date(validade)
   const hoje = new Date()
@@ -81,14 +84,20 @@ const getStatusExtintor = (validade: Date | string) => {
   return "EM DIA"
 }
 
+type TipoEquipamento = 'extintores' | 'hidrantes'
+
 export default function RelatoriosPage() {
   const { data: session, status: sessionStatus } = useSession()
   const [isGenerating, setIsGenerating] = useState<string | null>(null)
   const [isLoadingData, setIsLoadingData] = useState(true)
   
+  // Estado para controlar qual tipo de equipamento estamos visualizando
+  const [tipoEquipamento, setTipoEquipamento] = useState<TipoEquipamento>('extintores')
+  
   // Dados do Banco
   const [extintores, setExtintores] = useState<any[]>([])
-  const [filteredExtintores, setFilteredExtintores] = useState<any[]>([])
+  const [hidrantes, setHidrantes] = useState<any[]>([])
+  const [filteredData, setFilteredData] = useState<any[]>([])
   const [unidades, setUnidades] = useState<any[]>([])
 
   // Estados para os Filtros Avançados (Datas agora usam objetos Date)
@@ -104,12 +113,13 @@ export default function RelatoriosPage() {
       
       setIsLoadingData(true)
       try {
-        const [extData, uniData] = await Promise.all([
-          getRelatoriosExtintores(session.user.id), 
+        const [extData, hidData, uniData] = await Promise.all([
+          getRelatoriosExtintores(session.user.id),
+          getRelatoriosHidrantes(session.user.id),
           getUnidades()
         ])
         setExtintores(extData as any[])
-        setFilteredExtintores(extData as any[])
+        setHidrantes(hidData as any[])
         setUnidades(uniData?.data || [])
       } catch (error) {
         console.error("Erro ao carregar dados", error)
@@ -121,26 +131,27 @@ export default function RelatoriosPage() {
   }, [sessionStatus, session?.user?.id])
 
   useEffect(() => {
-    let result = [...extintores]
+    const data = tipoEquipamento === 'extintores' ? extintores : hidrantes
+    let result = [...data]
 
     if (buscaGeral) {
       const term = buscaGeral.toLowerCase()
-      result = result.filter(e => 
-        e.codigo?.toLowerCase().includes(term) || 
-        e.localizacao?.toLowerCase().includes(term) ||
-        e.tipo?.toLowerCase().includes(term)
+      result = result.filter(item => 
+        item.codigo?.toLowerCase().includes(term) || 
+        item.localizacao?.toLowerCase().includes(term) ||
+        (tipoEquipamento === 'extintores' && item.tipo?.toLowerCase().includes(term))
       )
     }
 
     if (filterUnidade !== "todas") {
-      result = result.filter(e => e.unidadeId === filterUnidade)
+      result = result.filter(item => item.unidadeId === filterUnidade)
     }
 
     if (filterDataInicio || filterDataFim || filterColaborador) {
-      result = result.filter(ext => {
-        if (!ext.inspecoes || ext.inspecoes.length === 0) return false;
+      result = result.filter(item => {
+        if (!item.inspecoes || item.inspecoes.length === 0) return false;
         
-        return ext.inspecoes.some((insp: any) => {
+        return item.inspecoes.some((insp: any) => {
           let matchData = true;
           let matchColab = true;
           
@@ -167,19 +178,29 @@ export default function RelatoriosPage() {
       });
     }
 
-    setFilteredExtintores(result)
-  }, [extintores, filterUnidade, filterDataInicio, filterDataFim, filterColaborador, buscaGeral])
+    setFilteredData(result)
+  }, [extintores, hidrantes, tipoEquipamento, filterUnidade, filterDataInicio, filterDataFim, filterColaborador, buscaGeral])
 
-  const countTotal = filteredExtintores.length
-  const countVencidos = filteredExtintores.filter(e => getStatusExtintor(e.validadeCarga) !== "EM DIA").length
-  const countInspecionados = filteredExtintores.filter(e => e.inspecoes && e.inspecoes.length > 0).length
+  const countTotal = filteredData.length
+  const countInspecionados = filteredData.filter(item => item.inspecoes && item.inspecoes.length > 0).length
+  
+  // Contagem de vencidos apenas para extintores
+  const countVencidos = tipoEquipamento === 'extintores' 
+    ? filteredData.filter(item => getStatusExtintor(item.validadeCarga) !== "EM DIA").length 
+    : 0
 
   // ============================================================================
   // GERAÇÃO DE PDF
   // ============================================================================
   const gerarRelatorioPDF = async (tipo: "todos" | "vencimentos" | "detalhado") => {
-    if (filteredExtintores.length === 0) {
+    if (filteredData.length === 0) {
       alert("Não há dados na tabela para gerar o relatório.")
+      return
+    }
+
+    // Se for vencimentos e estiver em hidrantes, não faz nada (hidrantes não tem vencimento)
+    if (tipo === "vencimentos" && tipoEquipamento === "hidrantes") {
+      alert("Relatório de vencimentos não está disponível para hidrantes.")
       return
     }
 
@@ -189,29 +210,41 @@ export default function RelatoriosPage() {
       const doc = new jsPDF()
       const dataAtual = new Date().toLocaleDateString('pt-BR')
       const logoBase64 = await loadImageAsBase64('/novalogo.png')
+      const equipamentoNome = tipoEquipamento === 'extintores' ? 'Extintores' : 'Hidrantes'
 
       if (tipo === "todos") {
         if (logoBase64) doc.addImage(logoBase64, 'PNG', 14, 10, 35, 15)
         doc.setFontSize(16)
-        doc.text("Relatório Geral de Extintores", 14, 35)
+        doc.text(`Relatório Geral de ${equipamentoNome}`, 14, 35)
         doc.setFontSize(10)
-        doc.text(`Gerado em: ${dataAtual} | Total: ${filteredExtintores.length} equipamentos`, 14, 42)
+        doc.text(`Gerado em: ${dataAtual} | Total: ${filteredData.length} equipamentos`, 14, 42)
 
-        const tableData = filteredExtintores.map(ext => [
-          ext.codigo, ext.localizacao, ext.tipo, ext.capacidade,
-          new Date(ext.validadeCarga).toLocaleDateString('pt-BR'), ext.unidade?.nome || "-"
-        ])
+        let tableData: any[][] = []
+        if (tipoEquipamento === 'extintores') {
+          tableData = filteredData.map(item => [
+            item.codigo, item.localizacao, item.tipo, item.capacidade,
+            new Date(item.validadeCarga).toLocaleDateString('pt-BR'), item.unidade?.nome || "-"
+          ])
+        } else {
+          tableData = filteredData.map(item => [
+            item.codigo, item.localizacao, item.unidade?.nome || "-"
+          ])
+        }
+
+        const head = tipoEquipamento === 'extintores' 
+          ? [['Código', 'Localização', 'Tipo', 'Capacidade', 'Validade', 'Unidade']]
+          : [['Código', 'Localização', 'Unidade']]
 
         autoTable(doc, {
           startY: 50,
-          head: [['Código', 'Localização', 'Tipo', 'Capacidade', 'Validade', 'Unidade']],
+          head,
           body: tableData,
           theme: 'striped',
-          headStyles: { fillColor: [40, 40, 40] } 
+          headStyles: { fillColor: tipoEquipamento === 'extintores' ? [234, 88, 12] : [59, 130, 246] } 
         })
-        doc.save(`extintores_geral_${dataAtual.replace(/\//g, '-')}.pdf`)
+        doc.save(`${equipamentoNome.toLowerCase()}_geral_${dataAtual.replace(/\//g, '-')}.pdf`)
       }
-      else if (tipo === "vencimentos") {
+      else if (tipo === "vencimentos" && tipoEquipamento === "extintores") {
         if (logoBase64) doc.addImage(logoBase64, 'PNG', 14, 10, 35, 15)
         doc.setFontSize(16)
         doc.setTextColor(220, 38, 38)
@@ -220,10 +253,10 @@ export default function RelatoriosPage() {
         doc.setFontSize(10)
         doc.text(`Gerado em: ${dataAtual}`, 14, 42)
 
-        const extintoresAlerta = filteredExtintores.filter(ext => getStatusExtintor(ext.validadeCarga) !== "EM DIA")
-        const tableData = extintoresAlerta.map(ext => [
-          ext.codigo, ext.localizacao, new Date(ext.validadeCarga).toLocaleDateString('pt-BR'),
-          getStatusExtintor(ext.validadeCarga), ext.unidade?.nome || "-"
+        const extintoresAlerta = filteredData.filter(item => getStatusExtintor(item.validadeCarga) !== "EM DIA")
+        const tableData = extintoresAlerta.map(item => [
+          item.codigo, item.localizacao, new Date(item.validadeCarga).toLocaleDateString('pt-BR'),
+          getStatusExtintor(item.validadeCarga), item.unidade?.nome || "-"
         ])
 
         autoTable(doc, {
@@ -243,8 +276,8 @@ export default function RelatoriosPage() {
       }
       else if (tipo === "detalhado") {
         let pagesAdded = 0;
-        for (let i = 0; i < filteredExtintores.length; i++) {
-          const ext = filteredExtintores[i]
+        for (let i = 0; i < filteredData.length; i++) {
+          const item = filteredData[i]
           if (pagesAdded > 0) doc.addPage()
           pagesAdded++;
 
@@ -255,7 +288,7 @@ export default function RelatoriosPage() {
           
           doc.setFontSize(18)
           doc.setTextColor(15, 23, 42)
-          doc.text(`CheckList Técnico: ${ext.codigo}`, 65, 22)
+          doc.text(`CheckList Técnico: ${item.codigo}`, 65, 22)
           
           doc.setFontSize(12)
           doc.setTextColor(51, 65, 85)
@@ -263,13 +296,16 @@ export default function RelatoriosPage() {
           
           doc.setFontSize(10)
           doc.setTextColor(71, 85, 105)
-          doc.text(`Unidade: ${ext.unidade?.nome || "-"}`, 14, 60)
-          doc.text(`Local: ${ext.localizacao}`, 14, 67)
-          doc.text(`Classe/Carga: ${ext.tipo} - ${ext.capacidade}`, 14, 74)
-          doc.text(`Validade Carga: ${new Date(ext.validadeCarga).toLocaleDateString('pt-BR')}`, 14, 81)
+          doc.text(`Unidade: ${item.unidade?.nome || "-"}`, 14, 60)
+          doc.text(`Local: ${item.localizacao}`, 14, 67)
+          
+          if (tipoEquipamento === 'extintores') {
+            doc.text(`Classe/Carga: ${item.tipo} - ${item.capacidade}`, 14, 74)
+            doc.text(`Validade Carga: ${new Date(item.validadeCarga).toLocaleDateString('pt-BR')}`, 14, 81)
+          }
 
-          let currentY = 95;
-          let inspecoesParaExibir = ext.inspecoes || [];
+          let currentY = tipoEquipamento === 'extintores' ? 95 : 85;
+          let inspecoesParaExibir = item.inspecoes || [];
           
           if (filterDataInicio || filterDataFim) {
             inspecoesParaExibir = inspecoesParaExibir.filter((insp: any) => {
@@ -320,11 +356,7 @@ export default function RelatoriosPage() {
               currentY += 2
               let checklistData: string[][] = []
 
-              if (Array.isArray(insp.checklist) && insp.checklist.length > 0) {
-                checklistData = insp.checklist.map((item: any) => [
-                  item.pergunta || item.nome, item.resposta || '-', item.conforme ? 'Sim' : 'Não'
-                ])
-              } else {
+              if (tipoEquipamento === 'extintores') {
                 const mapeamento = [
                   { campo: 'lacre', rotulo: 'Lacre Intacto' },
                   { campo: 'manometro', rotulo: 'Pressão (Manômetro)' },
@@ -332,10 +364,30 @@ export default function RelatoriosPage() {
                   { campo: 'mangueira', rotulo: 'Mangueira/Bico' },
                   { campo: 'pintura', rotulo: 'Estado do Cilindro' }
                 ]
-                mapeamento.forEach(item => {
-                  if (insp[item.campo] !== undefined && insp[item.campo] !== null) {
-                    const isConforme = insp[item.campo] === true || insp[item.campo] === "Conforme" || insp[item.campo] === "Sim"
-                    checklistData.push([item.rotulo, isConforme ? 'OK' : 'Falha', isConforme ? 'Sim' : 'Não'])
+                mapeamento.forEach(m => {
+                  if (insp[m.campo] !== undefined && insp[m.campo] !== null) {
+                    const isConforme = insp[m.campo] === true || insp[m.campo] === "Conforme" || insp[m.campo] === "Sim"
+                    checklistData.push([m.rotulo, isConforme ? 'OK' : 'Falha', isConforme ? 'Sim' : 'Não'])
+                  }
+                })
+              } else {
+                const mapeamento = [
+                  { campo: 'localAcessivel', rotulo: 'Local Acessível' },
+                  { campo: 'sinalizado', rotulo: 'Sinalizado' },
+                  { campo: 'estadoMangueiras', rotulo: 'Estado das Mangueiras' },
+                  { campo: 'enroladasCorretamente', rotulo: 'Enroladas Corretamente' },
+                  { campo: 'esguichosNoLocal', rotulo: 'Esguichos no Local' },
+                  { campo: 'esguichosBoasCondicoes', rotulo: 'Esguichos em Boas Condições' },
+                  { campo: 'semVazamentos', rotulo: 'Sem Vazamentos' },
+                  { campo: 'valvulaFechada', rotulo: 'Válvula Fechada' },
+                  { campo: 'temChaveStorz', rotulo: 'Tem Chave Storz' },
+                  { campo: 'estadoPintura', rotulo: 'Estado da Pintura' },
+                  { campo: 'proximoTesteHidrostatico', rotulo: 'Próximo Teste Hidrostático' }
+                ]
+                mapeamento.forEach(m => {
+                  if (insp[m.campo] !== undefined && insp[m.campo] !== null) {
+                    const isConforme = insp[m.campo] === true || insp[m.campo] === "Conforme" || insp[m.campo] === "Sim"
+                    checklistData.push([m.rotulo, isConforme ? 'OK' : 'Falha', isConforme ? 'Sim' : 'Não'])
                   }
                 })
               }
@@ -356,19 +408,19 @@ export default function RelatoriosPage() {
                 currentY = (doc as any).lastAutoTable.finalY + 10
               }
 
-              const itemsComFoto = insp.checklist?.filter((item: any) => item.foto)
+              const itemsComFoto = insp.checklist?.filter((c: any) => c.foto)
               if (itemsComFoto && itemsComFoto.length > 0) {
                 doc.setFontSize(10)
                 doc.setTextColor(15, 23, 42)
                 doc.text("Anexos Fotográficos:", 14, currentY)
                 currentY += 8
-                for (const item of itemsComFoto) {
+                for (const fotoItem of itemsComFoto) {
                   if (currentY > 210) { doc.addPage(); currentY = 20; }
                   doc.setFontSize(8)
-                  doc.text(`Evidência: ${item.pergunta}`, 14, currentY)
+                  doc.text(`Evidência: ${fotoItem.pergunta || 'Item'}`, 14, currentY)
                   currentY += 4
                   try {
-                    let fotoB64 = item.foto
+                    let fotoB64 = fotoItem.foto
                     if (fotoB64.startsWith('http') || fotoB64.startsWith('/')) fotoB64 = await loadImageAsBase64(fotoB64)
                     if (fotoB64) { doc.addImage(fotoB64, 'JPEG', 14, currentY, 50, 50); currentY += 55; }
                   } catch (e) {
@@ -376,12 +428,26 @@ export default function RelatoriosPage() {
                     doc.text("[Erro na renderização da imagem]", 14, currentY); currentY += 10;
                   }
                 }
+              } else if (insp.foto) {
+                doc.setFontSize(10)
+                doc.setTextColor(15, 23, 42)
+                doc.text("Anexo Fotográfico:", 14, currentY)
+                currentY += 8
+                if (currentY > 210) { doc.addPage(); currentY = 20; }
+                try {
+                  let fotoB64 = insp.foto
+                  if (fotoB64.startsWith('http') || fotoB64.startsWith('/')) fotoB64 = await loadImageAsBase64(fotoB64)
+                  if (fotoB64) { doc.addImage(fotoB64, 'JPEG', 14, currentY, 50, 50); currentY += 55; }
+                } catch (e) {
+                  doc.setTextColor(220, 38, 38)
+                  doc.text("[Erro na renderização da imagem]", 14, currentY); currentY += 10;
+                }
               }
               currentY += 10 
             }
           }
         }
-        doc.save(`checklist_detalhado_${dataAtual.replace(/\//g, '-')}.pdf`)
+        doc.save(`checklist_detalhado_${equipamentoNome.toLowerCase()}_${dataAtual.replace(/\//g, '-')}.pdf`)
       }
     } catch (error) {
       console.error("Erro ao gerar relatório:", error)
@@ -408,7 +474,7 @@ export default function RelatoriosPage() {
       <aside className="w-full lg:w-[380px] bg-white border-r border-zinc-200 lg:h-screen lg:sticky lg:top-0 flex flex-col shrink-0 overflow-y-auto shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10">
         
         <div className="p-6 border-b border-zinc-100 bg-white">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-800">
             Exportação
           </h1>
           <p className="text-sm text-zinc-500 mt-1">
@@ -428,9 +494,9 @@ export default function RelatoriosPage() {
           <button 
             onClick={() => gerarRelatorioPDF("todos")}
             disabled={isGenerating !== null}
-            className="flex items-start gap-4 p-4 rounded-xl border border-zinc-200 bg-white hover:border-blue-500 hover:shadow-[0_4px_12px_rgba(59,130,246,0.1)] transition-all text-left group"
+            className="flex items-start gap-4 p-4 rounded-2xl border border-zinc-200 bg-white hover:border-blue-500 hover:shadow-[0_4px_12px_rgba(59,130,246,0.1)] transition-all text-left group"
           >
-            <div className={`p-2 rounded-lg bg-blue-50 text-blue-600 ${isGenerating === 'todos' ? 'animate-pulse' : ''}`}>
+            <div className={`p-2 rounded-xl ${tipoEquipamento === 'extintores' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'} ${isGenerating === 'todos' ? 'animate-pulse' : ''}`}>
               <FileText className="w-5 h-5" />
             </div>
             <div className="flex-1">
@@ -439,26 +505,28 @@ export default function RelatoriosPage() {
             </div>
           </button>
 
-          <button 
-            onClick={() => gerarRelatorioPDF("vencimentos")}
-            disabled={isGenerating !== null}
-            className="flex items-start gap-4 p-4 rounded-xl border border-zinc-200 bg-white hover:border-red-500 hover:shadow-[0_4px_12px_rgba(239,68,68,0.1)] transition-all text-left group"
-          >
-            <div className={`p-2 rounded-lg bg-red-50 text-red-600 ${isGenerating === 'vencimentos' ? 'animate-pulse' : ''}`}>
-              <AlertCircle className="w-5 h-5" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-sm font-semibold text-zinc-900 group-hover:text-red-600 transition-colors">Relatório Crítico</h3>
-              <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">Apenas ativos vencidos ou próximos do vencimento.</p>
-            </div>
-          </button>
+          {tipoEquipamento === 'extintores' && (
+            <button 
+              onClick={() => gerarRelatorioPDF("vencimentos")}
+              disabled={isGenerating !== null}
+              className="flex items-start gap-4 p-4 rounded-2xl border border-zinc-200 bg-white hover:border-red-500 hover:shadow-[0_4px_12px_rgba(239,68,68,0.1)] transition-all text-left group"
+            >
+              <div className={`p-2 rounded-xl bg-red-50 text-red-600 ${isGenerating === 'vencimentos' ? 'animate-pulse' : ''}`}>
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-zinc-900 group-hover:text-red-600 transition-colors">Relatório Crítico</h3>
+                <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">Apenas ativos vencidos ou próximos do vencimento.</p>
+              </div>
+            </button>
+          )}
 
           <button 
             onClick={() => gerarRelatorioPDF("detalhado")}
             disabled={isGenerating !== null}
-            className="flex items-start gap-4 p-4 rounded-xl border border-zinc-200 bg-white hover:border-emerald-500 hover:shadow-[0_4px_12px_rgba(16,185,129,0.1)] transition-all text-left group"
+            className="flex items-start gap-4 p-4 rounded-2xl border border-zinc-200 bg-white hover:border-emerald-500 hover:shadow-[0_4px_12px_rgba(16,185,129,0.1)] transition-all text-left group"
           >
-            <div className={`p-2 rounded-lg bg-emerald-50 text-emerald-600 ${isGenerating === 'detalhado' ? 'animate-pulse' : ''}`}>
+            <div className={`p-2 rounded-xl bg-emerald-50 text-emerald-600 ${isGenerating === 'detalhado' ? 'animate-pulse' : ''}`}>
               <FileStack className="w-5 h-5" />
             </div>
             <div className="flex-1">
@@ -485,6 +553,30 @@ export default function RelatoriosPage() {
           </div>
 
           <div className="space-y-4">
+            {/* Novo filtro de tipo de equipamento */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold text-zinc-600">Tipo de Equipamento</label>
+              <Select value={tipoEquipamento} onValueChange={(v: TipoEquipamento) => setTipoEquipamento(v)}>
+                <SelectTrigger className="w-full bg-white border-zinc-200 h-10 shadow-sm focus:ring-blue-500">
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="extintores">
+                    <div className="flex items-center gap-2">
+                      <Flame className="w-4 h-4 text-orange-600" />
+                      Extintores
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="hidrantes">
+                    <div className="flex items-center gap-2">
+                      <Droplets className="w-4 h-4 text-blue-600" />
+                      Hidrantes
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-1.5">
               <label className="text-[11px] font-semibold text-zinc-600">Unidade Base</label>
               <Select value={filterUnidade} onValueChange={setFilterUnidade}>
@@ -580,7 +672,15 @@ export default function RelatoriosPage() {
         {/* Topo do Main: Busca Rápida e Título */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-zinc-800">Pré-visualização de Dados</h2>
+            <h2 className="text-xl font-semibold text-zinc-800 flex items-center gap-2">
+              Pré-visualização de Dados
+              <Badge className={cn(
+                "font-semibold text-[10px] uppercase tracking-wider px-3 py-1 rounded-full",
+                tipoEquipamento === 'extintores' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+              )}>
+                {tipoEquipamento === 'extintores' ? 'Extintores' : 'Hidrantes'}
+              </Badge>
+            </h2>
             <p className="text-sm text-zinc-500 mt-1">O PDF será gerado com base nos registros abaixo.</p>
           </div>
           <div className="relative w-full md:w-80">
@@ -616,20 +716,22 @@ export default function RelatoriosPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-zinc-100 shadow-sm flex items-center justify-between relative overflow-hidden">
-            <div className="relative z-10">
-              <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Vencimentos</p>
-              <p className={`text-2xl font-bold mt-1 ${countVencidos > 0 ? 'text-red-600' : 'text-zinc-900'}`}>
-                {isLoadingData ? '-' : countVencidos}
-              </p>
+          {tipoEquipamento === 'extintores' && (
+            <div className="bg-white rounded-2xl p-5 border border-zinc-100 shadow-sm flex items-center justify-between relative overflow-hidden">
+              <div className="relative z-10">
+                <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Vencimentos</p>
+                <p className={`text-2xl font-bold mt-1 ${countVencidos > 0 ? 'text-red-600' : 'text-zinc-900'}`}>
+                  {isLoadingData ? '-' : countVencidos}
+                </p>
+              </div>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center relative z-10 ${countVencidos > 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                {countVencidos > 0 ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+              </div>
+              {countVencidos > 0 && (
+                <div className="absolute right-0 top-0 w-24 h-24 bg-red-50 rounded-full blur-2xl -mr-8 -mt-8"></div>
+              )}
             </div>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center relative z-10 ${countVencidos > 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-              {countVencidos > 0 ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
-            </div>
-            {countVencidos > 0 && (
-              <div className="absolute right-0 top-0 w-24 h-24 bg-red-50 rounded-full blur-2xl -mr-8 -mt-8"></div>
-            )}
-          </div>
+          )}
         </div>
 
         {/* Tabela de Dados (Estilo Data Grid) */}
@@ -640,7 +742,7 @@ export default function RelatoriosPage() {
                 <div className="w-8 h-8 border-4 border-zinc-200 border-t-blue-500 rounded-full animate-spin mb-4"></div>
                 <p className="text-sm font-medium">Carregando dados estruturados...</p>
               </div>
-            ) : filteredExtintores.length === 0 ? (
+            ) : filteredData.length === 0 ? (
               <div className="h-64 flex flex-col items-center justify-center text-zinc-400">
                 <FileText className="w-10 h-10 text-zinc-300 mb-3" />
                 <p className="text-sm font-medium">Nenhum registro encontrado para estes filtros.</p>
@@ -651,45 +753,64 @@ export default function RelatoriosPage() {
                   <TableRow className="bg-zinc-50/80 hover:bg-zinc-50/80 border-b border-zinc-200">
                     <TableHead className="font-semibold text-xs text-zinc-500 h-11">Identificação</TableHead>
                     <TableHead className="font-semibold text-xs text-zinc-500 h-11">Unidade & Local</TableHead>
-                    <TableHead className="font-semibold text-xs text-zinc-500 h-11">Especificação</TableHead>
+                    {tipoEquipamento === 'extintores' && <TableHead className="font-semibold text-xs text-zinc-500 h-11">Especificação</TableHead>}
                     <TableHead className="font-semibold text-xs text-zinc-500 h-11 text-right">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredExtintores.slice(0, 20).map((ext) => {
-                    const status = getStatusExtintor(ext.validadeCarga);
-                    const isVencido = status === "VENCIDO" || status === "VENCENDO";
+                  {filteredData.slice(0, 20).map((item) => {
+                    const statusExtintor = tipoEquipamento === 'extintores' ? getStatusExtintor(item.validadeCarga) : null
+                    const statusInspecao = item.inspecoes?.[0]?.status
                     
                     return (
-                      <TableRow key={ext.id} className="border-b border-zinc-100 hover:bg-zinc-50/50 transition-colors">
+                      <TableRow key={item.id} className="border-b border-zinc-100 hover:bg-zinc-50/50 transition-colors">
                         <TableCell className="py-3">
                           <span className="font-mono text-sm font-semibold text-zinc-900 bg-zinc-100 px-2 py-1 rounded">
-                            {ext.codigo}
+                            {item.codigo}
                           </span>
                         </TableCell>
                         <TableCell className="py-3">
                           <div className="flex flex-col">
-                            <span className="text-sm font-medium text-zinc-900">{ext.unidade?.nome || "Sem Unidade"}</span>
-                            <span className="text-xs text-zinc-500">{ext.localizacao}</span>
+                            <span className="text-sm font-medium text-zinc-900">{item.unidade?.nome || "Sem Unidade"}</span>
+                            <span className="text-xs text-zinc-500">{item.localizacao}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="py-3">
-                           <div className="flex flex-col">
-                            <span className="text-sm text-zinc-700">{ext.tipo}</span>
-                            <span className="text-xs text-zinc-500">{ext.capacidade}</span>
-                          </div>
-                        </TableCell>
+                        {tipoEquipamento === 'extintores' && (
+                          <TableCell className="py-3">
+                            <div className="flex flex-col">
+                              <span className="text-sm text-zinc-700">{item.tipo}</span>
+                              <span className="text-xs text-zinc-500">{item.capacidade}</span>
+                            </div>
+                          </TableCell>
+                        )}
                         <TableCell className="py-3 text-right">
-                          <Badge 
-                            variant="outline"
-                            className={`font-medium text-[10px] uppercase tracking-wider px-2 py-0.5 border ${
-                              isVencido 
-                                ? 'bg-red-50 text-red-700 border-red-200' 
-                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            }`}
-                          >
-                            {status}
-                          </Badge>
+                          {tipoEquipamento === 'extintores' && statusExtintor ? (
+                            <Badge 
+                              variant="outline"
+                              className={cn(
+                                "font-medium text-[10px] uppercase tracking-wider px-2 py-0.5 border",
+                                statusExtintor !== "EM DIA" 
+                                  ? 'bg-red-50 text-red-700 border-red-200' 
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              )}
+                            >
+                              {statusExtintor}
+                            </Badge>
+                          ) : (
+                            <Badge 
+                              variant="outline"
+                              className={cn(
+                                "font-medium text-[10px] uppercase tracking-wider px-2 py-0.5 border",
+                                statusInspecao === 'Conforme' 
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                                  : statusInspecao === 'Não Conforme'
+                                    ? 'bg-red-50 text-red-700 border-red-200'
+                                    : 'bg-zinc-50 text-zinc-600 border-zinc-200'
+                              )}
+                            >
+                              {statusInspecao || 'Pendente'}
+                            </Badge>
+                          )}
                         </TableCell>
                       </TableRow>
                     )
@@ -698,10 +819,10 @@ export default function RelatoriosPage() {
               </Table>
             )}
           </div>
-          {filteredExtintores.length > 20 && (
+          {filteredData.length > 20 && (
              <div className="bg-zinc-50 p-3 text-center border-t border-zinc-200">
                <span className="text-xs font-medium text-zinc-500">
-                 Mostrando 20 de {filteredExtintores.length} registros. A exportação em PDF incluirá todos.
+                 Mostrando 20 de {filteredData.length} registros. A exportação em PDF incluirá todos.
                </span>
              </div>
           )}

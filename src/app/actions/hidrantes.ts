@@ -110,9 +110,29 @@ export async function deleteHidrante(id: string) {
   }
 }
 
-export async function getHidrantes() {
+export async function getHidrantes(userId?: string) {
   try {
+    let whereClause: any = {}
+
+    if (userId) {
+      const user = await prisma.usuario.findUnique({
+        where: { id: userId },
+        include: {
+          unidadesAcesso: true,
+          setoresAcesso: true,
+        },
+      })
+
+      if (user && user.perfil !== 'Administrador') {
+        const unidadesAcessoIds = user.unidadesAcesso.map(a => a.unidadeId)
+        whereClause = {
+          unidadeId: { in: unidadesAcessoIds },
+        }
+      }
+    }
+
     return await prisma.hidrante.findMany({
+      where: whereClause,
       include: {
         unidade: true,
         inspecoes: {
@@ -121,9 +141,169 @@ export async function getHidrantes() {
         },
       },
       orderBy: { codigo: 'asc' },
+    })
+  } catch (error) {
+    console.error('Error fetching hidrantes:', error)
+    return []
+  }
+}
+
+export async function createInspecaoHidrante(formData: FormData) {
+  try {
+    const hidranteId = formData.get('hidranteId') as string;
+    const usuarioId = formData.get('usuarioId') as string;
+    const observacao = formData.get('observacao') as string;
+    const dataInspecao = new Date(formData.get('dataInspecao') as string);
+
+    const checklistItems = [
+      'localAcessivel',
+      'sinalizado',
+      'estadoMangueiras',
+      'enroladasCorretamente',
+      'esguichosNoLocal',
+      'esguichosBoasCondicoes',
+      'semVazamentos',
+      'valvulaFechada',
+      'temChaveStorz',
+      'estadoPintura',
+      'proximoTesteHidrostatico'
+    ];
+
+    const hasNonConformity = checklistItems.some(item => formData.get(item) === 'nao-conforme');
+
+    await prisma.inspecaoHidrante.create({
+      data: {
+        hidranteId,
+        usuarioId,
+        observacao,
+        dataInspecao,
+        status: hasNonConformity ? 'Não Conforme' : 'Conforme',
+        localAcessivel: formData.get('localAcessivel') !== 'nao-conforme',
+        sinalizado: formData.get('sinalizado') !== 'nao-conforme',
+        estadoMangueiras: formData.get('estadoMangueiras') !== 'nao-conforme',
+        enroladasCorretamente: formData.get('enroladasCorretamente') !== 'nao-conforme',
+        esguichosNoLocal: formData.get('esguichosNoLocal') !== 'nao-conforme',
+        esguichosBoasCondicoes: formData.get('esguichosBoasCondicoes') !== 'nao-conforme',
+        semVazamentos: formData.get('semVazamentos') !== 'nao-conforme',
+        valvulaFechada: formData.get('valvulaFechada') !== 'nao-conforme',
+        temChaveStorz: formData.get('temChaveStorz') !== 'nao-conforme',
+        estadoPintura: formData.get('estadoPintura') !== 'nao-conforme',
+        proximoTesteHidrostatico: formData.get('proximoTesteHidrostatico') !== 'nao-conforme'
+      }
+    });
+
+    revalidatePath('/hidrantes');
+    return { success: true };
+  } catch (error) {
+    console.error('Error creating hidrante inspection:', error);
+    return { success: false, error: 'Falha ao registrar inspeção de hidrante' };
+  }
+}
+
+export async function getHidranteComHistorico(id: string, userId: string) {
+  try {
+    if (!userId) return null;
+
+    return await prisma.hidrante.findUnique({
+      where: { id },
+      include: {
+        unidade: true,
+        inspecoes: {
+          include: {
+            usuario: true,
+          },
+          orderBy: { dataInspecao: 'desc' },
+        }
+      }
     });
   } catch (error) {
-    console.error('Error fetching hidrantes:', error);
+    console.error('Error fetching hidrante with history:', error);
+    return null;
+  }
+}
+
+export async function updateInspecaoHidrante(inspecaoId: string, userId: string, data: any) {
+  try {
+    const user = await prisma.usuario.findUnique({ where: { id: userId } });
+    if (!user) return { success: false, error: 'Usuário não encontrado' };
+    
+    // Only allow Administrador or Bombeiro
+    if (user.perfil !== 'Administrador' && user.perfil !== 'Bombeiro') {
+      return { success: false, error: 'Você não tem permissão para editar inspeções' };
+    }
+    
+    await prisma.inspecaoHidrante.update({
+      where: { id: inspecaoId },
+      data: { ...data, usuarioId: userId }
+    });
+    
+    revalidatePath('/hidrantes');
+    revalidatePath('/relatorios');
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating hidrante inspection:', error);
+    return { success: false, error: 'Falha ao atualizar inspeção' };
+  }
+}
+
+export async function deleteInspecaoHidrante(inspecaoId: string, userId: string) {
+  try {
+    const user = await prisma.usuario.findUnique({ where: { id: userId } });
+    if (!user) return { success: false, error: 'Usuário não encontrado' };
+    
+    // Only allow Administrador or Bombeiro
+    if (user.perfil !== 'Administrador' && user.perfil !== 'Bombeiro') {
+      return { success: false, error: 'Você não tem permissão para deletar inspeções' };
+    }
+    
+    await prisma.inspecaoHidrante.delete({
+      where: { id: inspecaoId }
+    });
+    
+    revalidatePath('/hidrantes');
+    revalidatePath('/relatorios');
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting hidrante inspection:', error);
+    return { success: false, error: 'Falha ao excluir inspeção' };
+  }
+}
+
+export async function getRelatoriosHidrantes(userId: string) {
+  try {
+    let whereClause: any = {};
+
+    // Buscar o usuário para verificar o perfil e acessos
+    const user = await prisma.usuario.findUnique({
+      where: { id: userId },
+      include: {
+        unidadesAcesso: true,
+        setoresAcesso: true,
+      },
+    });
+
+    if (user && user.perfil !== 'Administrador') {
+      const unidadesAcessoIds = user.unidadesAcesso.map(a => a.unidadeId);
+      whereClause = {
+        unidadeId: { in: unidadesAcessoIds }
+      };
+    }
+
+    return await prisma.hidrante.findMany({
+      where: whereClause,
+      include: {
+        unidade: true,
+        inspecoes: {
+          include: {
+            usuario: true,
+          },
+          orderBy: { dataInspecao: 'desc' },
+        },
+      },
+      orderBy: { codigo: 'asc' },
+    });
+  } catch (error) {
+    console.error('Error fetching relatorios hidrantes:', error);
     return [];
   }
 }

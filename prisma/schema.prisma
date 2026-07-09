@@ -168,10 +168,17 @@ model InspecaoHidrante {
   hidranteId String
   hidrante   Hidrante @relation(fields: [hidranteId], references: [id])
 
-  caixa       Boolean
-  mangueira   Boolean
-  esguicho    Boolean
-  sinalizacao Boolean
+  localAcessivel    Boolean // O local está acessível?
+  sinalizado        Boolean // Está sinalizado?
+  estadoMangueiras  Boolean // Qual o estado das mangueiras?
+  enroladasCorretamente Boolean // Estão enroladas corretamente?
+  esguichosNoLocal  Boolean // Os esguichos estão no local?
+  esguichosBoasCondicoes Boolean // Estão em boas condições?
+  semVazamentos     Boolean // Há vazamentos?
+  valvulaFechada    Boolean // A válvula está fechada?
+  temChaveStorz     Boolean // Tem Chave storz?
+  estadoPintura     Boolean // Qual o estado da pintura?
+  proximoTesteHidrostatico Boolean // Próximo teste hidrostáticos?
 
   observacao   String?
   foto         String?
