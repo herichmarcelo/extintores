@@ -23,12 +23,14 @@ import {
 import { Camera, Loader2, Plus } from "lucide-react"
 import { createHidrante, updateHidrante } from "@/app/actions/hidrantes"
 import { getUnidades } from "@/app/actions/extintores"
+import { getSetores } from "@/app/actions/setores"
 
 interface Hidrante {
   id: string
   codigo: string
   localizacao: string
   unidadeId: string
+  setorId?: string | null
   foto?: string | null
 }
 
@@ -48,15 +50,31 @@ export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setContr
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [unidades, setUnidades] = useState<any[]>([])
+  const [setores, setSetores] = useState<any[]>([])
+  const [selectedUnidadeId, setSelectedUnidadeId] = useState<string>("")
+  const [selectedSetorId, setSelectedSetorId] = useState<string>("")
 
   useEffect(() => {
     if (open) {
       getUnidades().then((result) => setUnidades(result.data))
+      getSetores().then((result) => {
+        if (result.success) {
+          setSetores(result.data)
+        }
+      })
       if (hidrante?.foto) {
         setPreviewUrl(hidrante.foto)
       }
+      if (hidrante?.unidadeId) {
+        setSelectedUnidadeId(hidrante.unidadeId)
+      }
+      if (hidrante?.setorId) {
+        setSelectedSetorId(hidrante.setorId)
+      }
     } else {
       setPreviewUrl(null)
+      setSelectedUnidadeId("")
+      setSelectedSetorId("")
     }
   }, [open, hidrante])
 
@@ -137,7 +155,12 @@ export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setContr
               <Label htmlFor="unidadeId" className="text-xs font-bold text-slate-600">
                 Unidade
               </Label>
-              <Select name="unidadeId" required defaultValue={hidrante?.unidadeId}>
+              <Select
+                name="unidadeId"
+                required
+                value={selectedUnidadeId}
+                onValueChange={setSelectedUnidadeId}
+              >
                 <SelectTrigger className="h-11 rounded-xl border-[#E5E7EB] bg-slate-50 focus:border-[#2979ff] focus:ring-1 focus:ring-[#2979ff]/20">
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
@@ -153,6 +176,27 @@ export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setContr
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="setorId" className="text-xs font-bold text-slate-600">
+              Setor
+            </Label>
+            <Select name="setorId" value={selectedSetorId} onValueChange={setSelectedSetorId}>
+              <SelectTrigger className="h-11 rounded-xl border-[#E5E7EB] bg-slate-50 focus:border-[#2979ff] focus:ring-1 focus:ring-[#2979ff]/20">
+                <SelectValue placeholder="Selecione um setor (opcional)" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-[#E5E7EB]">
+                {setores.filter((s: any) => !selectedUnidadeId || s.unidadeId === selectedUnidadeId).map((s: any) => (
+                  <SelectItem key={s.id} value={s.id} className="font-medium">
+                    {s.nome}
+                  </SelectItem>
+                ))}
+                {setores.filter((s: any) => !selectedUnidadeId || s.unidadeId === selectedUnidadeId).length === 0 && (
+                  <p className="p-3 text-xs text-slate-400">Nenhum setor cadastrado</p>
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

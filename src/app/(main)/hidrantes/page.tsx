@@ -48,8 +48,10 @@ interface Hidrante {
   codigo: string
   localizacao: string
   unidadeId: string
+  setorId?: string | null
   foto?: string | null
   unidade: { id: string; nome: string }
+  setor?: { id: string; nome: string }
   inspecoes?: Array<{ status: string; dataInspecao?: Date | string }>
 }
 

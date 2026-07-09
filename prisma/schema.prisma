@@ -84,6 +84,7 @@ model Setor {
   unidade   Unidade @relation(fields: [unidadeId], references: [id])
 
   extintores Extintor[]
+  hidrantes  Hidrante[]
   acessos    SetorAcesso[]
 }
 
@@ -131,6 +132,8 @@ model Hidrante {
   codigo      String
   localizacao String
   foto        String?  // Foto do equipamento cadastrado
+  setorId     String?
+  setor       Setor?   @relation(fields: [setorId], references: [id])
 
   unidadeId String
   unidade   Unidade @relation(fields: [unidadeId], references: [id])
