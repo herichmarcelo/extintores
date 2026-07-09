@@ -118,9 +118,14 @@ export async function deleteHidrante(id: string) {
 
 export async function getHidrantes(userId?: string) {
   try {
-    if (!userId) return [];
+    console.log('[DEBUG getHidrantes called with userId:', userId);
+    if (!userId) {
+      console.log('[DEBUG getHidrantes] No userId provided');
+      return [];
+    }
     
     let whereClause: any = {};
+    console.log('[DEBUG getHidrantes] Initial whereClause:', JSON.stringify(whereClause));
 
     // Buscar o usuário para verificar o perfil e acessos
     const user = await prisma.usuario.findUnique({
@@ -130,15 +135,36 @@ export async function getHidrantes(userId?: string) {
         setoresAcesso: true,
       },
     });
+    console.log('[DEBUG getHidrantes] User found:', user ? { id: user.id, perfil: user.perfil, unidadesAcessoCount: user.unidadesAcesso.length } : 'null');
+    if (user) {
+      console.log('[DEBUG getHidrantes] User perfil:', JSON.stringify(user.perfil));
+      console.log('[DEBUG getHidrantes] User perfil trimmed:', JSON.stringify(user.perfil?.trim()));
+      console.log('[DEBUG getHidrantes] User unidadesAcesso:', JSON.stringify(user.unidadesAcesso.map(a => ({ unidadeId: a.unidadeId }))));
+    }
 
-    if (user && user.perfil !== 'Administrador') {
+    // ARMADURA: Verificação robusta para Administrador (case-insensitive e trim)
+    const isAdmin = user && (user.perfil?.trim()?.toLowerCase() === 'administrador');
+    console.log('[DEBUG getHidrantes] Is Admin?', isAdmin);
+
+    if (user && !isAdmin) {
       const unidadesAcessoIds = user.unidadesAcesso.map(a => a.unidadeId);
+      console.log('[DEBUG getHidrantes] unidadesAcessoIds:', JSON.stringify(unidadesAcessoIds));
       whereClause = {
         unidadeId: { in: unidadesAcessoIds },
       };
+    } else if (user && isAdmin) {
+      // GARANTIA: Força whereClause vazio para Admin
+      console.log('[DEBUG getHidrantes] Admin user detected - no filters applied');
+      whereClause = {};
     }
 
-    return await prisma.hidrante.findMany({
+    console.log('[DEBUG getHidrantes] Final whereClause:', JSON.stringify(whereClause));
+
+    // Primeiro contamos quantos registros existem no total
+    const totalHidrantes = await prisma.hidrante.count();
+    console.log('[DEBUG getHidrantes] Total hidrantes in DB:', totalHidrantes);
+
+    const result = await prisma.hidrante.findMany({
       where: whereClause,
       include: {
         unidade: true,
@@ -149,8 +175,12 @@ export async function getHidrantes(userId?: string) {
       },
       orderBy: { codigo: 'asc' },
     });
+
+    console.log('[DEBUG getHidrantes] Query result count:', result.length);
+    console.log('[DEBUG getHidrantes] Result codes:', result.map(r => r.codigo));
+    return result;
   } catch (error) {
-    console.error('Error fetching hidrantes:', error);
+    console.error('[DEBUG getHidrantes ERROR:', error);
     return [];
   }
 }
@@ -278,7 +308,14 @@ export async function deleteInspecaoHidrante(inspecaoId: string, userId: string)
 
 export async function getRelatoriosHidrantes(userId: string) {
   try {
+    console.log('[DEBUG getRelatoriosHidrantes called with userId:', userId);
+    if (!userId) {
+      console.log('[DEBUG getRelatoriosHidrantes] No userId provided');
+      return [];
+    }
+    
     let whereClause: any = {};
+    console.log('[DEBUG getRelatoriosHidrantes] Initial whereClause:', JSON.stringify(whereClause));
 
     // Buscar o usuário para verificar o perfil e acessos
     const user = await prisma.usuario.findUnique({
@@ -288,15 +325,36 @@ export async function getRelatoriosHidrantes(userId: string) {
         setoresAcesso: true,
       },
     });
-
-    if (user && user.perfil !== 'Administrador') {
-      const unidadesAcessoIds = user.unidadesAcesso.map(a => a.unidadeId);
-      whereClause = {
-        unidadeId: { in: unidadesAcessoIds }
-      };
+    console.log('[DEBUG getRelatoriosHidrantes] User found:', user ? { id: user.id, perfil: user.perfil, unidadesAcessoCount: user.unidadesAcesso.length } : 'null');
+    if (user) {
+      console.log('[DEBUG getRelatoriosHidrantes] User perfil:', JSON.stringify(user.perfil));
+      console.log('[DEBUG getRelatoriosHidrantes] User perfil trimmed:', JSON.stringify(user.perfil?.trim()));
+      console.log('[DEBUG getRelatoriosHidrantes] User unidadesAcesso:', JSON.stringify(user.unidadesAcesso.map(a => ({ unidadeId: a.unidadeId }))));
     }
 
-    return await prisma.hidrante.findMany({
+    // ARMADURA: Verificação robusta para Administrador (case-insensitive e trim)
+    const isAdmin = user && (user.perfil?.trim()?.toLowerCase() === 'administrador');
+    console.log('[DEBUG getRelatoriosHidrantes] Is Admin?', isAdmin);
+
+    if (user && !isAdmin) {
+      const unidadesAcessoIds = user.unidadesAcesso.map(a => a.unidadeId);
+      console.log('[DEBUG getRelatoriosHidrantes] unidadesAcessoIds:', JSON.stringify(unidadesAcessoIds));
+      whereClause = {
+        unidadeId: { in: unidadesAcessoIds },
+      };
+    } else if (user && isAdmin) {
+      // GARANTIA: Força whereClause vazio para Admin
+      console.log('[DEBUG getRelatoriosHidrantes] Admin user detected - no filters applied');
+      whereClause = {};
+    }
+
+    console.log('[DEBUG getRelatoriosHidrantes] Final whereClause:', JSON.stringify(whereClause));
+
+    // Primeiro contamos quantos registros existem no total
+    const totalHidrantes = await prisma.hidrante.count();
+    console.log('[DEBUG getRelatoriosHidrantes] Total hidrantes in DB:', totalHidrantes);
+
+    const result = await prisma.hidrante.findMany({
       where: whereClause,
       include: {
         unidade: true,
@@ -309,8 +367,12 @@ export async function getRelatoriosHidrantes(userId: string) {
       },
       orderBy: { codigo: 'asc' },
     });
+
+    console.log('[DEBUG getRelatoriosHidrantes] Query result count:', result.length);
+    console.log('[DEBUG getRelatoriosHidrantes] Result codes:', result.map(r => r.codigo));
+    return result;
   } catch (error) {
-    console.error('Error fetching relatorios hidrantes:', error);
+    console.error('[DEBUG getRelatoriosHidrantes ERROR:', error);
     return [];
   }
 }
