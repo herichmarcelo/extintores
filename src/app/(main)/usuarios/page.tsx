@@ -111,7 +111,7 @@ import { BottomNavigation } from "@/components/BottomNavigation"
       getUnidades(),
       getSetores()
     ])
-    setUsuarios(usuariosData)
+    setUsuarios(usuariosData as unknown as Usuario[])
     setUnidades(unidadesResult.data)
     setSetores(setoresResult.data || [])
     setIsLoading(false)

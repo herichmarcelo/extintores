@@ -34,7 +34,8 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Progress } from "@/components/ui/progress"
+{/*import { Progress } from "@/components/ui/progress"*/}
+
 import { cn } from "@/lib/utils"
 
 export default function HistoricoHidrantePage({ params }: { params: Promise<{ id: string }> }) {
@@ -278,7 +279,15 @@ export default function HistoricoHidrantePage({ params }: { params: Promise<{ id
                             <span className="text-xs font-bold text-slate-500">Índice de Conformidade</span>
                             <span className="text-sm font-black text-slate-800">{score.passed}/{score.total}</span>
                           </div>
-                          <Progress value={score.percent} className="h-2" indicatorColor={isInspecaoOk ? "bg-emerald-500" : "bg-rose-500"} />
+                          <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                            <div 
+                              className={cn(
+                                "h-full rounded-full transition-all duration-500",
+                                isInspecaoOk ? "bg-emerald-500" : "bg-rose-500"
+                              )}
+                              style={{ width: `${score.percent}%` }}
+                            />
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-between">
