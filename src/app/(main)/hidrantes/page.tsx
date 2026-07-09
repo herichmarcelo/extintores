@@ -117,9 +117,9 @@ export default function HidrantesPage() {
     if (activeFilter !== "todos") {
       filtered = filtered.filter((h) => {
         const status = getStatus(h)
-        if (activeFilter === "pendentes") return status === "vencendo"
+        if (activeFilter === "pendentes") return status === "vencido"
         if (activeFilter === "vencidos") return status === "vencido"
-        if (activeFilter === "vencendo") return status === "vencendo"
+        if (activeFilter === "vencendo") return status === "em-dia"
         if (activeFilter === "em-dia") return status === "em-dia"
         if (activeFilter === "inspecionados") return status === "inspecionado"
         return true
@@ -183,7 +183,8 @@ export default function HidrantesPage() {
 
   const total = filteredHidrantes.length
   const vencidos = filteredHidrantes.filter((h) => getStatus(h) === "vencido").length
-  const proximos = filteredHidrantes.filter((h) => getStatus(h) === "vencendo").length
+  const proximos = 0;
+
   const emDia = filteredHidrantes.filter((h) => getStatus(h) === "em-dia" || getStatus(h) === "inspecionado").length
   const inspecoesHoje = filteredHidrantes.filter((h) => {
     const ultima = h.inspecoes?.[0]
@@ -294,7 +295,7 @@ export default function HidrantesPage() {
                               <CheckCircle2 className="w-3 h-3" /> Em dia
                             </span>
                           ) : null}
-                          {status === 'vencendo' && (
+                          {(status as string) === 'vencendo' && (
                             <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-600 text-[10px] font-black uppercase tracking-wider border border-orange-100">
                               <Clock className="w-3 h-3" /> Vencendo
                             </span>
