@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
+import { NextRequest } from "next/server";
 
-export async function middleware(request) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Rotas públicas: /login, /api/auth/*, static files
