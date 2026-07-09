@@ -3,66 +3,57 @@
 import { use, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   Flame, 
   MapPin, 
-  Calendar, 
   ChevronLeft, 
-  ClipboardCheck, 
-  FileText, 
   User, 
   CheckCircle2, 
   AlertCircle, 
-  Clock,
   Edit2,
   Trash2,
   Camera,
-  X
+  Activity,
+  CalendarCheck,
+  ChevronDown,
+  ChevronUp,
+  ShieldCheck,
+  ShieldAlert,
+  Calendar
 } from "lucide-react"
 import { getExtintorComHistorico, updateInspecao, deleteInspecao } from "@/app/actions/extintores"
-import { motion } from "framer-motion"
-import { Badge } from "@/components/ui/badge"
+import { motion, AnimatePresence } from "framer-motion"
 import { BottomNavigation } from "@/components/BottomNavigation"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
-}
-
-const itemAnim = {
-  hidden: { y: 20, opacity: 0 },
-  show: { y: 0, opacity: 1 }
-}
-
 export default function HistoricoExtintorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { data: session } = useSession()
   const router = useRouter()
+  
   const [extintor, setExtintor] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingInspecao, setEditingInspecao] = useState<any>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
 
-  // Check if user can edit (Bombeiro or Administrador)
-  const canEdit = (): boolean => {
-    // Since we don't have user role in session, let's assume we can add it, but for now, let's just show buttons (we check in backend anyway)
-    return true
+  const canEdit = () => true // Lógica de permissão
+
+  const toggleCard = (inspecaoId: string) => {
+    setExpandedCards(prev => ({ ...prev, [inspecaoId]: !prev[inspecaoId] }))
   }
 
   const handleEditClick = (inspecao: any) => {
@@ -72,11 +63,9 @@ export default function HistoricoExtintorPage({ params }: { params: Promise<{ id
 
   const handleDeleteClick = async (inspecaoId: string) => {
     if (!confirm('Tem certeza que deseja deletar esta inspeção?')) return
-    
     setIsDeleting(true)
     if (session?.user?.id) {
       await deleteInspecao(inspecaoId, session.user.id)
-      // Refresh data
       const data = await getExtintorComHistorico(id, session.user.id)
       setExtintor(data)
     }
@@ -86,36 +75,28 @@ export default function HistoricoExtintorPage({ params }: { params: Promise<{ id
   const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!session?.user?.id || !editingInspecao) return
-    
     setIsSubmitting(true)
     
     const formData = new FormData(e.currentTarget)
-    
-    const result = await updateInspecao(
-      editingInspecao.id, 
-      session.user.id, 
-      {
-        status: formData.get('status') as string,
-        observacao: formData.get('observacao') as string,
-        sinalizacao: formData.get('sinalizacao') === 'on',
-        manometro: formData.get('manometro') === 'on',
-        lacre: formData.get('lacre') === 'on',
-        mangueira: formData.get('mangueira') === 'on',
-        pintura: formData.get('pintura') === 'on',
-        seloInmetro: formData.get('seloInmetro') === 'on',
-        dataInspecao: new Date(formData.get('dataInspecao') as string),
-      }
-    )
+    const result = await updateInspecao(editingInspecao.id, session.user.id, {
+      status: formData.get('status') as string,
+      observacao: formData.get('observacao') as string,
+      sinalizacao: formData.get('sinalizacao') === 'on',
+      manometro: formData.get('manometro') === 'on',
+      lacre: formData.get('lacre') === 'on',
+      mangueira: formData.get('mangueira') === 'on',
+      pintura: formData.get('pintura') === 'on',
+      seloInmetro: formData.get('seloInmetro') === 'on',
+      dataInspecao: new Date(formData.get('dataInspecao') as string),
+    })
     
     if (result.success) {
       setEditDialogOpen(false)
-      // Refresh data
       const data = await getExtintorComHistorico(id, session.user.id)
       setExtintor(data)
     } else {
       alert(result.error)
     }
-    
     setIsSubmitting(false)
   }
 
@@ -131,283 +112,316 @@ export default function HistoricoExtintorPage({ params }: { params: Promise<{ id
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Carregando...</p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sincronizando dados...</p>
       </div>
     )
   }
 
-  if (!extintor) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Equipamento não encontrado</p>
-      </div>
-    )
+  if (!extintor) return null
+
+  // Itens específicos para Extintores
+  const checklistItems = [
+    { id: "lacre", label: "Lacre Intacto" },
+    { id: "manometro", label: "Manômetro na Faixa Verde" },
+    { id: "sinalizacao", label: "Sinalização Adequada" },
+    { id: "mangueira", label: "Mangueira/Esguicho em Boas Condições" },
+    { id: "pintura", label: "Pintura do Cilindro" },
+    { id: "seloInmetro", label: "Selo do Inmetro Legível" },
+  ]
+
+  // Métricas Rápidas
+  const totalInspecoes = extintor.inspecoes?.length || 0
+  const lastInspecao = extintor.inspecoes?.[0]
+  const isHealthy = lastInspecao?.status === 'Conforme'
+
+  const calculateScore = (inspecao: any) => {
+    const passed = checklistItems.filter(item => inspecao[item.id]).length
+    return { passed, total: checklistItems.length, percent: Math.round((passed / checklistItems.length) * 100) }
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col p-4 lg:p-8">
-      <div className="max-w-4xl mx-auto w-full space-y-6">
-        {/* Cabeçalho com Identidade Visual */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-white rounded-2xl border border-slate-200 shadow-sm">
-              <ChevronLeft className="h-6 w-6 text-slate-600" onClick={() => router.back()} />
+    <div className="min-h-screen bg-[#F4F4F5] pb-28 font-sans">
+      
+      {/* 1. HERO SECTION & HEADER */}
+      <div className={cn(
+        "pt-8 pb-12 px-6 rounded-b-[40px] shadow-sm transition-colors duration-500",
+        isHealthy ? "bg-gradient-to-br from-teal-600 to-emerald-800" : "bg-gradient-to-br from-rose-600 to-red-800",
+        totalInspecoes === 0 && "bg-gradient-to-br from-slate-600 to-slate-800"
+      )}>
+        <div className="max-w-3xl mx-auto">
+          {/* Navegação Topo */}
+          <div className="flex items-center justify-between mb-8">
+            <button 
+              onClick={() => router.back()}
+              className="p-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full text-white transition-all"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <div className="bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full flex items-center gap-2">
+              <Flame className="h-4 w-4 text-white" />
+              <span className="text-sm font-bold text-white uppercase tracking-widest">{extintor.codigo}</span>
             </div>
-            <div>
-              <p className="text-2xl font-black text-slate-900 tracking-tight">Histórico Completo</p>
-              <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{extintor.codigo}</p>
+          </div>
+
+          {/* Status Principal */}
+          <div className="text-center text-white mb-6">
+            {isHealthy ? (
+              <ShieldCheck className="h-16 w-16 mx-auto mb-4 opacity-90" />
+            ) : (
+              <ShieldAlert className="h-16 w-16 mx-auto mb-4 opacity-90" />
+            )}
+            <h1 className="text-3xl font-black tracking-tight mb-2">
+              {totalInspecoes === 0 ? "Sem Histórico" : (isHealthy ? "Equipamento Operacional" : "Atenção Necessária")}
+            </h1>
+            <p className="flex items-center justify-center gap-2 text-white/80 text-sm font-medium">
+              <MapPin className="h-4 w-4" /> {extintor.unidade?.nome} • {extintor.localizacao}
+            </p>
+            
+            {/* Badges com informações vitais do extintor */}
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              <div className="bg-white/10 border border-white/20 backdrop-blur-md px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs font-bold">
+                <Flame className="h-3.5 w-3.5" /> 
+                Tipo {extintor.tipo} ({extintor.capacidade} {extintor.capacidadeUnidade})
+              </div>
+              <div className="bg-white/10 border border-white/20 backdrop-blur-md px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs font-bold text-orange-100">
+                <Calendar className="h-3.5 w-3.5" /> 
+                Validade: {new Date(extintor.validadeCarga).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Card do Extintor */}
-        <motion.div variants={itemAnim}>
-          <Card className="bg-white border border-slate-100 shadow-sm rounded-3xl overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-6">
-                <div className="h-24 w-24 bg-gradient-to-br from-orange-100 to-red-100 rounded-3xl flex items-center justify-center shrink-0 border border-orange-200">
-                  <Flame className="h-10 w-10 text-orange-600" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-4">
-                    <p className="text-2xl font-black text-slate-900 tracking-tight">{extintor.codigo}</p>
-                    <Badge className={cn(
-                      "text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest",
-                      extintor.inspecoes.length > 0 
-                        ? "bg-emerald-100 text-emerald-700" 
-                        : "bg-slate-100 text-slate-600"
-                    )}>
-                      {extintor.inspecoes.length > 0 
-                        ? extintor.inspecoes[0].status 
-                        : "Pendente"
-                      }
-                    </Badge>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                        <MapPin className="h-3.5 w-3.5" /> {extintor.unidade?.nome || "Unidade"}
-                      </p>
-                      <p className="text-sm font-bold text-slate-700">{extintor.localizacao}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                        <Flame className="h-3.5 w-3.5" /> Tipo {extintor.tipo}
-                      </p>
-                      <p className="text-sm font-bold text-slate-700">{extintor.capacidade} {extintor.capacidadeUnidade}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5" /> Validade da Carga
-                      </p>
-                      <p className="text-sm font-black text-orange-600">{new Date(extintor.validadeCarga).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                    </div>
-                  </div>
-                </div>
+      {/* 2. OVERVIEW METRICS */}
+      <div className="max-w-3xl mx-auto px-4 -mt-8 relative z-10">
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="rounded-3xl border-none shadow-md bg-white">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-600 shrink-0">
+                <Activity className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Inspeções</p>
+                <p className="text-2xl font-black text-slate-800">{totalInspecoes}</p>
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+          
+          <Card className="rounded-3xl border-none shadow-md bg-white">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                <CalendarCheck className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest leading-tight">Última Visita</p>
+                <p className="text-sm sm:text-base font-black text-slate-800 mt-1">
+                  {lastInspecao ? new Date(lastInspecao.dataInspecao).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : 'Nunca'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-        {/* Lista de Inspeções */}
-        <motion.div variants={container} initial="hidden" animate="show" className="space-y-4">
-          {extintor.inspecoes.length === 0 ? (
-            <div className="bg-white p-8 rounded-3xl border border-dashed border-slate-200 text-center">
-              <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Nenhuma inspeção registrada</p>
-            </div>
-          ) : extintor.inspecoes.map((inspecao: any, index: number) => (
-            <motion.div key={inspecao.id} variants={itemAnim}>
-              <Card className="border border-slate-100 shadow-sm rounded-3xl overflow-hidden bg-white hover:shadow-md transition-all">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
-                        inspecao.status === 'Conforme' ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
-                      }`}>
-                        {inspecao.status === 'Conforme' ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-slate-800 uppercase tracking-tighter">
-                          Inspeção #{extintor.inspecoes.length - index}
-                        </p>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                          {new Date(inspecao.dataInspecao).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right hidden sm:block mr-2">
-                        <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 justify-end">
-                          <User className="h-3 w-3" /> Inspetor
-                        </div>
-                        <p className="text-[11px] font-bold text-slate-700 uppercase">{inspecao.usuario?.nome || 'Desconhecido'}</p>
-                      </div>
+      {/* 3. TIMELINE DE HISTÓRICO */}
+      <div className="max-w-3xl mx-auto mt-10 px-6">
+        <h2 className="text-lg font-black text-slate-800 mb-6 uppercase tracking-tight">Linha do Tempo</h2>
+
+        {totalInspecoes === 0 ? (
+          <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-300">
+            <p className="text-slate-400 font-medium">Nenhum registro encontrado para este equipamento.</p>
+          </div>
+        ) : (
+          <div className="relative border-l-2 border-slate-200 ml-4 space-y-8">
+            {extintor.inspecoes.map((inspecao: any, index: number) => {
+              const score = calculateScore(inspecao)
+              const isExpanded = expandedCards[inspecao.id]
+              const isInspecaoOk = inspecao.status === 'Conforme'
+
+              return (
+                <div key={inspecao.id} className="relative pl-6 sm:pl-8">
+                  {/* Ponto da Timeline */}
+                  <div className={cn(
+                    "absolute -left-[11px] top-4 w-5 h-5 rounded-full ring-4 ring-[#F4F4F5]",
+                    isInspecaoOk ? "bg-emerald-500" : "bg-rose-500"
+                  )} />
+
+                  <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                    <CardContent className="p-0">
                       
-                      {/* Edit/Delete Buttons */}
-                      {canEdit() && (
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50"
-                            onClick={() => handleEditClick(inspecao)}
+                      <div className="p-5 flex flex-col gap-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="text-sm font-black text-slate-800">
+                              Inspeção #{extintor.inspecoes.length - index}
+                            </p>
+                            <p className="text-xs font-bold text-slate-400 mt-1">
+                              {new Date(inspecao.dataInspecao).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                            </p>
+                          </div>
+                          
+                          {canEdit() && (
+                            <div className="flex gap-1 bg-slate-50 p-1 rounded-xl">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 rounded-lg" onClick={() => handleEditClick(inspecao)}>
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 rounded-lg" onClick={() => handleDeleteClick(inspecao.id)} disabled={isDeleting}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* BARRA DE PROGRESSO NATIVA */}
+                        <div className="bg-slate-50 p-3.5 rounded-2xl">
+                          <div className="flex justify-between items-end mb-2">
+                            <span className="text-xs font-bold text-slate-500">Índice de Conformidade</span>
+                            <span className="text-sm font-black text-slate-800">{score.passed}/{score.total}</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                            <div 
+                              className={cn(
+                                "h-full transition-all duration-500",
+                                isInspecaoOk ? "bg-emerald-500" : "bg-rose-500"
+                              )}
+                              style={{ width: `${score.percent}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
+                              <User className="h-4 w-4 text-slate-500" />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">Inspetor</p>
+                              <p className="text-xs font-bold text-slate-700">{inspecao.usuario?.nome || 'Desconhecido'}</p>
+                            </div>
+                          </div>
+                          
+                          <Button 
+                            variant="ghost" 
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs font-bold"
+                            onClick={() => toggleCard(inspecao.id)}
                           >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50"
-                            onClick={() => handleDeleteClick(inspecao.id)}
-                            disabled={isDeleting}
-                          >
-                            <Trash2 className="h-4 w-4" />
+                            {isExpanded ? "Ocultar" : "Detalhes"}
+                            {isExpanded ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />}
                           </Button>
                         </div>
-                      )}
-                    </div>
-                  </div>
+                      </div>
 
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    {[
-                      { label: 'Lacre', value: inspecao.lacre },
-                      { label: 'Manômetro', value: inspecao.manometro },
-                      { label: 'Sinalização', value: inspecao.sinalizacao },
-                      { label: 'Mangueira', value: inspecao.mangueira },
-                      { label: 'Pintura', value: inspecao.pintura },
-                      { label: 'Inmetro', value: inspecao.seloInmetro },
-                    ].map((item, i) => (
-                      <div key={i} className="flex flex-col p-2 bg-slate-50 rounded-xl border border-slate-100">
-                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{item.label}</span>
-                        {item.value ? (
-                          <CheckCircle2 className="h-3 w-3 text-green-500" />
-                        ) : (
-                          <AlertCircle className="h-3 w-3 text-red-500" />
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="border-t border-slate-100 bg-slate-50/50"
+                          >
+                            <div className="p-5 space-y-6">
+                              <div className="space-y-3">
+                                {checklistItems.map(item => (
+                                  <div key={item.id} className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-slate-600">{item.label}</span>
+                                    {inspecao[item.id] ? (
+                                      <CheckCircle2 className="h-5 w-5 text-emerald-500 drop-shadow-sm" />
+                                    ) : (
+                                      <AlertCircle className="h-5 w-5 text-rose-500 drop-shadow-sm" />
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+
+                              {inspecao.observacao && (
+                                <div className="p-4 bg-white rounded-2xl border border-slate-200">
+                                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Observações</p>
+                                  <p className="text-sm text-slate-700 italic">{inspecao.observacao}</p>
+                                </div>
+                              )}
+
+                              {inspecao.foto && (
+                                <div>
+                                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Registro Fotográfico</p>
+                                  <div className="relative h-40 w-full rounded-2xl overflow-hidden shadow-sm">
+                                    <img src={inspecao.foto} alt="Evidência" className="h-full w-full object-cover" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
                         )}
-                      </div>
-                    ))}
-                  </div>
+                      </AnimatePresence>
 
-                  {inspecao.observacao && (
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-4">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                        <FileText className="h-3 w-3" /> Observações
-                      </p>
-                      <p className="text-xs font-bold text-slate-600 italic">"{inspecao.observacao}"</p>
-                    </div>
-                  )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
-                  {inspecao.foto && (
-                    <div className="relative h-24 w-24 rounded-xl overflow-hidden border border-slate-100 shadow-sm">
-                      <img src={inspecao.foto} alt="Evidência" className="h-full w-full object-cover" />
-                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                        <Camera className="h-5 w-5 text-white" />
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        {/* Edit Dialog */}
-        {editingInspecao && (
-          <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>Editar Inspeção</DialogTitle>
-                <DialogDescription>
-                  Edite os detalhes da inspeção
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleEditSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* 4. MODAL DE EDIÇÃO OTIMIZADO PARA MOBILE */}
+      {editingInspecao && (
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="sm:max-w-xl w-full h-[90vh] sm:h-auto mt-auto sm:mt-0 mb-0 sm:mb-auto rounded-t-[32px] sm:rounded-3xl p-0 flex flex-col overflow-hidden bg-[#F4F4F5]">
+            <div className="p-6 bg-white border-b border-slate-100 shrink-0">
+              <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" />
+              <DialogTitle className="text-xl font-black text-slate-800">Editar Registro</DialogTitle>
+            </div>
+            
+            <div className="overflow-y-auto p-6 flex-1">
+              <form id="edit-form" onSubmit={handleEditSubmit} className="space-y-8">
+                
+                <div className="bg-white p-5 rounded-3xl shadow-sm space-y-4">
                   <div className="space-y-2">
-                    <Label>Data da Inspeção</Label>
-                    <Input
-                      type="date"
-                      name="dataInspecao"
-                      defaultValue={new Date(editingInspecao.dataInspecao).toISOString().split('T')[0]}
-                      required
-                    />
+                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Data da Inspeção</Label>
+                    <Input type="date" name="dataInspecao" defaultValue={new Date(editingInspecao.dataInspecao).toISOString().split('T')[0]} required className="h-12 rounded-xl bg-slate-50 border-slate-200" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Status</Label>
-                    <select
-                      name="status"
-                      defaultValue={editingInspecao.status}
-                      className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white"
-                    >
-                      <option value="Conforme">Conforme</option>
-                      <option value="Não Conforme">Não Conforme</option>
+                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Status Geral</Label>
+                    <select name="status" defaultValue={editingInspecao.status} className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-bold focus:ring-2 focus:ring-red-600 outline-none">
+                      <option value="Conforme">Conforme (Operacional)</option>
+                      <option value="Não Conforme">Não Conforme (Atenção)</option>
                     </select>
                   </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label>Checklist</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {[
-                      { name: 'lacre', label: 'Lacre', checked: editingInspecao.lacre },
-                      { name: 'manometro', label: 'Manômetro', checked: editingInspecao.manometro },
-                      { name: 'sinalizacao', label: 'Sinalização', checked: editingInspecao.sinalizacao },
-                      { name: 'mangueira', label: 'Mangueira', checked: editingInspecao.mangueira },
-                      { name: 'pintura', label: 'Pintura', checked: editingInspecao.pintura },
-                      { name: 'seloInmetro', label: 'Selo Inmetro', checked: editingInspecao.seloInmetro },
-                    ].map((item) => (
-                        <div key={item.name} className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          <input
-                            type="checkbox"
-                            name={item.name}
-                            defaultChecked={item.checked}
-                            id={item.name}
-                            className="h-4 w-4"
-                          />
-                          <Label htmlFor={item.name} className="text-sm font-medium text-slate-700">
-                            {item.label}
-                          </Label>
-                        </div>
+                <div className="bg-white p-5 rounded-3xl shadow-sm space-y-4">
+                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-4">Verificação Física</Label>
+                  <div className="space-y-3">
+                    {checklistItems.map((item) => (
+                      <label key={item.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors">
+                        <span className="text-sm font-semibold text-slate-700">{item.label}</span>
+                        <input type="checkbox" name={item.id} defaultChecked={editingInspecao[item.id]} className="h-5 w-5 rounded border-slate-300 text-red-600 focus:ring-red-600" />
+                      </label>
                     ))}
                   </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label>Observações</Label>
-                  <Textarea
-                    name="observacao"
-                    defaultValue={editingInspecao.observacao}
-                    placeholder="Digite observações sobre a inspeção..."
-                    className="min-h-[100px]"
-                  />
+                <div className="bg-white p-5 rounded-3xl shadow-sm space-y-2">
+                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Anotações Adicionais</Label>
+                  <Textarea name="observacao" defaultValue={editingInspecao.observacao} placeholder="Justificativas ou detalhes..." className="min-h-[100px] rounded-xl bg-slate-50 border-slate-200 p-4 resize-none" />
                 </div>
-                
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setEditDialogOpen(false)}
-                    disabled={isSubmitting}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="bg-red-600 hover:bg-red-700"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? 'Salvando...' : 'Salvar'}
-                  </Button>
-                </DialogFooter>
               </form>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
+            </div>
 
-      <div className="lg:hidden mt-auto">
+            <div className="p-4 bg-white border-t border-slate-100 shrink-0 flex gap-3">
+              <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)} className="flex-1 h-14 rounded-2xl font-bold border-slate-200 text-slate-600">
+                Cancelar
+              </Button>
+              <Button type="submit" form="edit-form" disabled={isSubmitting} className="flex-1 h-14 rounded-2xl font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20">
+                {isSubmitting ? 'Salvando...' : 'Salvar'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden">
         <BottomNavigation />
       </div>
     </div>
