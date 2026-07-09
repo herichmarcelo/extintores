@@ -1,10 +1,11 @@
 "use client"
 
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { Search, Bell, UserCircle } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { UserCircle } from "lucide-react";
 
 export default function MainLayout({
   children,
@@ -12,6 +13,25 @@ export default function MainLayout({
   children: React.ReactNode;
 }>) {
   const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
+
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]">
+        <div className="w-10 h-10 border-4 border-slate-200 border-t-[#B11226] rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
 
   return (
     <SidebarProvider defaultOpen={false}>
@@ -43,10 +63,10 @@ export default function MainLayout({
             <div className="text-right">
               {/* NOME E CARGO DINÂMICOS */}
               <p className="text-sm font-black text-slate-800 uppercase tracking-tight truncate max-w-[250px]">
-                {status === "loading" ? "Carregando..." : (session?.user?.name || "Usuário Logado")}
+                {session?.user?.name || "Usuário Logado"}
               </p>
               <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">
-                {status === "loading" ? "..." : "Usuário Logado"}
+                {session?.user?.perfil || "Usuário"}
               </p>
             </div>
             <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200">

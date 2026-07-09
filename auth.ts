@@ -2,6 +2,7 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import prisma from "./src/lib/prisma"
+import bcrypt from "bcryptjs"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -20,7 +21,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           where: { email: credentials.email },
         })
 
-        if (!user || user.senha !== credentials.password) {
+        if (!user) {
+          return null
+        }
+
+        // Check if password is already hashed (starts with $2a$, $2b$, or $2y$)
+        const isHashed = user.senha.startsWith('$2a$') || user.senha.startsWith('$2b$') || user.senha.startsWith('$2y$')
+        
+        let passwordMatch = false
+        if (isHashed) {
+          // Compare hashed password
+          passwordMatch = await bcrypt.compare(credentials.password, user.senha)
+        } else {
+          // Fallback for existing plaintext passwords
+          passwordMatch = user.senha === credentials.password
+        }
+
+        if (!passwordMatch) {
           return null
         }
 
@@ -50,6 +67,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return session
     },
+    authorized({ request, auth }) {
+      // Check if user is authenticated for protected routes
+      const { pathname } = request.nextUrl
+      
+      // Public routes
+      if (pathname === "/login") {
+        return !auth ? true : Response.redirect(new URL("/dashboard", request.url))
+      }
+      
+      // All other routes require authentication
+      return !!auth
+    }
   },
   pages: {
     signIn: "/login",

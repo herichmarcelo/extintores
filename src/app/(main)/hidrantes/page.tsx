@@ -1,5 +1,6 @@
 "use client"
 
+export const dynamic = 'force-dynamic'
 import { useState, useEffect } from "react"
 import { getHidrantes, deleteHidrante } from "@/app/actions/hidrantes"
 import { getUnidades } from "@/app/actions/extintores"

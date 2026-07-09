@@ -2,6 +2,7 @@
 
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import bcrypt from 'bcryptjs';
 
 export async function getUsuarios() {
   try {
@@ -36,11 +37,14 @@ export async function createUsuario(formData: FormData) {
       return { success: false, error: 'Este e-mail já está cadastrado.' };
     }
 
+    // Hash the password before saving
+    const hashedPassword = await bcrypt.hash(senha, 12);
+
     await prisma.usuario.create({
       data: {
         nome,
         email,
-        senha, // Nota: Em um ambiente de produção, a senha deve ser hasheada (ex: bcrypt)
+        senha: hashedPassword,
         perfil,
         ...(perfil !== 'Administrador' && {
           unidadesAcesso: {
@@ -107,7 +111,7 @@ export async function updateUsuario(id: string, formData: FormData) {
 
     // Only update password if provided
     if (senha) {
-      updateData.senha = senha;
+      updateData.senha = await bcrypt.hash(senha, 12);
     }
 
     // Handle access (only for non-admins)
