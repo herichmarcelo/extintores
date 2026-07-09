@@ -22,17 +22,24 @@ export default function LoginPage() {
     setIsLoading(true)
     setError("")
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    })
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      })
 
-    if (result?.error) {
-      setError("E-mail ou senha incorretos")
+      if (result?.error) {
+        setError("E-mail ou senha incorretos")
+        console.error('SignIn error:', result.error)
+        setIsLoading(false)
+      } else {
+        router.push("/dashboard")
+      }
+    } catch (error) {
+      console.error('Login exception:', error)
+      setError("Ocorreu um erro durante o login. Tente novamente.")
       setIsLoading(false)
-    } else {
-      router.push("/dashboard")
     }
   }
 
