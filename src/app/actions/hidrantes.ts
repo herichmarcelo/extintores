@@ -42,6 +42,8 @@ export async function createHidrante(formData: FormData) {
     });
 
     revalidatePath('/hidrantes');
+    revalidatePath('/dashboard');
+    revalidatePath('/relatorios');
     return { success: true };
   } catch (error) {
     console.error('Error creating hidrante:', error);
@@ -89,6 +91,8 @@ export async function updateHidrante(id: string, formData: FormData) {
     });
 
     revalidatePath('/hidrantes');
+    revalidatePath('/dashboard');
+    revalidatePath('/relatorios');
     return { success: true };
   } catch (error) {
     console.error('Error updating hidrante:', error);
@@ -103,6 +107,8 @@ export async function deleteHidrante(id: string) {
     });
 
     revalidatePath('/hidrantes');
+    revalidatePath('/dashboard');
+    revalidatePath('/relatorios');
     return { success: true };
   } catch (error) {
     console.error('Error deleting hidrante:', error);
@@ -112,23 +118,24 @@ export async function deleteHidrante(id: string) {
 
 export async function getHidrantes(userId?: string) {
   try {
-    let whereClause: any = {}
+    if (!userId) return [];
+    
+    let whereClause: any = {};
 
-    if (userId) {
-      const user = await prisma.usuario.findUnique({
-        where: { id: userId },
-        include: {
-          unidadesAcesso: true,
-          setoresAcesso: true,
-        },
-      })
+    // Buscar o usuário para verificar o perfil e acessos
+    const user = await prisma.usuario.findUnique({
+      where: { id: userId },
+      include: {
+        unidadesAcesso: true,
+        setoresAcesso: true,
+      },
+    });
 
-      if (user && user.perfil !== 'Administrador') {
-        const unidadesAcessoIds = user.unidadesAcesso.map(a => a.unidadeId)
-        whereClause = {
-          unidadeId: { in: unidadesAcessoIds },
-        }
-      }
+    if (user && user.perfil !== 'Administrador') {
+      const unidadesAcessoIds = user.unidadesAcesso.map(a => a.unidadeId);
+      whereClause = {
+        unidadeId: { in: unidadesAcessoIds },
+      };
     }
 
     return await prisma.hidrante.findMany({
@@ -141,10 +148,10 @@ export async function getHidrantes(userId?: string) {
         },
       },
       orderBy: { codigo: 'asc' },
-    })
+    });
   } catch (error) {
-    console.error('Error fetching hidrantes:', error)
-    return []
+    console.error('Error fetching hidrantes:', error);
+    return [];
   }
 }
 

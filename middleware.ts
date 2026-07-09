@@ -1,11 +1,6 @@
-import NextAuth from "next-auth"
-import authConfig from "./auth.config"
 import { NextResponse } from "next/server"
 
-const { auth } = NextAuth(authConfig)
-
 export async function middleware(request) {
-  const session = await auth()
   const { pathname } = request.nextUrl
 
   // Rotas públicas: /login, /api/auth/*, static files
@@ -14,13 +9,17 @@ export async function middleware(request) {
   const isAuthApi = pathname.startsWith('/api/auth')
   const isStaticFile = pathname.startsWith('/_next') || pathname.startsWith('/icons') || pathname === '/manifest.json' || pathname === '/favicon.ico'
 
-  // Se for rota pública e usuário está logado: redireciona para dashboard
-  if ((isPublicPath || isAuthApi) && session) {
+  // Verifica se o cookie de sessão existe
+  const hasSessionCookie = request.cookies.has('next-auth.session-token') || 
+                          request.cookies.has('__Secure-next-auth.session-token')
+
+  // Se for rota pública e tem sessão: redireciona para dashboard
+  if ((isPublicPath || isAuthApi) && hasSessionCookie) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // Se não for rota pública/static e não tem sessão: redireciona para login
-  if (!isPublicPath && !isAuthApi && !isStaticFile && !session) {
+  // Se não for rota pública/static e NÃO tem sessão: redireciona para login
+  if (!isPublicPath && !isAuthApi && !isStaticFile && !hasSessionCookie) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
