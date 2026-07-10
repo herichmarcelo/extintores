@@ -181,7 +181,7 @@ model InspecaoHidrante {
   valvulaFechada    Boolean // A válvula está fechada?
   temChaveStorz     Boolean // Tem Chave storz?
   estadoPintura     Boolean // Qual o estado da pintura?
-  proximoTesteHidrostatico Boolean // Próximo teste hidrostáticos?
+  proximoTesteHidrostatico DateTime? // Próximo teste hidrostáticos?
 
   observacao   String?
   foto         String?

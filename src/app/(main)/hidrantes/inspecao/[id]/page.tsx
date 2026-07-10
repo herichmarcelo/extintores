@@ -33,6 +33,7 @@ export default function InspecaoHidrantePage({ params }: { params: Promise<{ id:
   const [hidrante, setHidrante] = useState<any>(null)
   const [isDataLoading, setIsDataLoading] = useState(true)
   const [dataInspecao, setDataInspecao] = useState<Date | null>(new Date())
+  const [proximoTesteHidrostatico, setProximoTesteHidrostatico] = useState<Date | null>(null)
 
   const [itemPhotos, setItemPhotos] = useState<Record<string, string>>({})
 
@@ -76,6 +77,9 @@ export default function InspecaoHidrantePage({ params }: { params: Promise<{ id:
     if (dataInspecao) {
       formData.append('dataInspecao', format(dataInspecao, 'yyyy-MM-dd'))
     }
+    if (proximoTesteHidrostatico) {
+      formData.append('proximoTesteHidrostatico', format(proximoTesteHidrostatico, 'yyyy-MM-dd'))
+    }
     
     const items = [
       'localAcessivel',
@@ -87,8 +91,7 @@ export default function InspecaoHidrantePage({ params }: { params: Promise<{ id:
       'semVazamentos',
       'valvulaFechada',
       'temChaveStorz',
-      'estadoPintura',
-      'proximoTesteHidrostatico'
+      'estadoPintura'
     ]
     const hasNonConformity = items.some(item => formData.get(item) === 'nao-conforme')
     formData.append('status', hasNonConformity ? 'Não Conforme' : 'Conforme')
@@ -114,7 +117,6 @@ export default function InspecaoHidrantePage({ params }: { params: Promise<{ id:
     { id: "valvulaFechada", label: "A válvula está fechada?" },
     { id: "temChaveStorz", label: "Tem Chave storz?" },
     { id: "estadoPintura", label: "Qual o estado da pintura?" },
-    { id: "proximoTesteHidrostatico", label: "Próximo teste hidrostáticos?" },
   ]
 
   if (isDataLoading) {
@@ -283,6 +285,18 @@ export default function InspecaoHidrantePage({ params }: { params: Promise<{ id:
                     </AnimatePresence>
                   </div>
                 ))}
+
+                {/* Próximo Teste Hidrostático */}
+                <div className="flex flex-col gap-3 pb-6 border-t border-slate-100 pt-6">
+                  <Label className="text-[13px] font-bold text-slate-800 leading-snug">
+                    Próximo teste hidrostáticos?
+                  </Label>
+                  <DatePicker
+                    date={proximoTesteHidrostatico}
+                    setDate={setProximoTesteHidrostatico}
+                    placeholder="dd/mm/aaaa"
+                  />
+                </div>
               </div>
 
               <div className="space-y-3 pt-6 border-t border-slate-100">

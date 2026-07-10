@@ -111,7 +111,8 @@ export async function createInspecaoHidrante(formData: FormData) {
     const valvulaFechada = formData.get('valvulaFechada') === 'conforme';
     const temChaveStorz = formData.get('temChaveStorz') === 'conforme';
     const estadoPintura = formData.get('estadoPintura') === 'conforme';
-    const proximoTesteHidrostatico = formData.get('proximoTesteHidrostatico') === 'conforme';
+    const proximoTesteHidrostaticoStr = formData.get('proximoTesteHidrostatico') as string | null;
+    const proximoTesteHidrostatico = proximoTesteHidrostaticoStr ? new Date(proximoTesteHidrostaticoStr) : null;
 
     let fotoUrl = null;
 
@@ -335,7 +336,7 @@ export async function updateInspecaoHidrante(inspecaoId: string, userId: string,
   valvulaFechada: boolean;
   temChaveStorz: boolean;
   estadoPintura: boolean;
-  proximoTesteHidrostatico: boolean;
+  proximoTesteHidrostatico?: Date | null;
 }) {
   try {
     const user = await prisma.usuario.findUnique({
