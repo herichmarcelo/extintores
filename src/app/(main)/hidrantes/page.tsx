@@ -51,7 +51,7 @@ interface Hidrante {
   setorId?: string | null
   foto?: string | null
   unidade: { id: string; nome: string }
-  setor?: { id: string; nome: string }
+  setor?: { id: string; nome: string } | null
   inspecoes?: Array<{ status: string; dataInspecao?: Date | string }>
 }
 

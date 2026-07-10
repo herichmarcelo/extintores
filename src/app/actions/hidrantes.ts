@@ -173,7 +173,10 @@ export async function getHidrantes(userId?: string) {
 
       whereClause = {
         unidadeId: { in: unidadesAcessoIds },
-        setorId: { in: setoresAcessoIds }
+        OR: [
+          { setorId: { in: setoresAcessoIds } },
+          { setorId: null }
+        ]
       };
     }
 
@@ -409,7 +412,10 @@ export async function getRelatoriosHidrantes(userId: string) {
 
       whereClause = {
         unidadeId: { in: unidadesAcessoIds },
-        setorId: { in: setoresAcessoIds }
+        OR: [
+          { setorId: { in: setoresAcessoIds } },
+          { setorId: null }
+        ]
       };
     }
 

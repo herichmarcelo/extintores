@@ -193,7 +193,10 @@ export async function getExtintores(userId?: string) {
       // Construir cláusula WHERE estrita
       whereClause = {
         unidadeId: { in: unidadesAcessoIds },
-        setorId: { in: setoresAcessoIds }
+        OR: [
+          { setorId: { in: setoresAcessoIds } },
+          { setorId: null }
+        ]
       };
     }
 
