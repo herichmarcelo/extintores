@@ -65,15 +65,15 @@ export default function LoginPage() {
           >
             <Flame className="h-14 w-14" />
           </motion.div>
-          <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase">Bello</h1>
-          <p className="mt-1 text-[#c25848] font-black uppercase tracking-[0.4em] text-xs">Alimentos</p>
+          <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase">Bello Alimentos</h1>
+          <p className="mt-1 text-[#c25848] font-black uppercase tracking-[0.4em] text-xs">GESTÃO DE EXTINTORES</p>
         </div>
 
         <Card className="shadow-2xl border-none bg-white rounded-[2rem] overflow-hidden">
           <CardHeader className="space-y-1 pt-10 px-10">
             <CardTitle className="text-3xl font-black text-slate-800 tracking-tight">Login</CardTitle>
             <CardDescription className="text-slate-500 font-bold">
-              Painel SESMT - Segurança do Trabalho
+              Painel da Brigada
             </CardDescription>
           </CardHeader>
           <CardContent className="p-10 pt-6">
