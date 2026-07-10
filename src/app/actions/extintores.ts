@@ -363,52 +363,94 @@ export async function getDashboardData() {
               orderBy: { dataInspecao: 'desc' },
               take: 1,
             },
+            unidade: true,
+          },
+        },
+        hidrantes: {
+          include: {
+            inspecoes: {
+              orderBy: { dataInspecao: 'desc' },
+              take: 1,
+            },
+            unidade: true,
           },
         },
       },
     });
 
     const totalExtintores = unidades.reduce((acc, u) => acc + u.extintores.length, 0);
+    const totalHidrantes = unidades.reduce((acc, u) => acc + u.hidrantes.length, 0);
     
-    let aprovados = 0;
-    let reprovados = 0;
+    let aprovadosExtintores = 0;
+    let reprovadosExtintores = 0;
+    let aprovadosHidrantes = 0;
+    let reprovadosHidrantes = 0;
+    const criticos: any[] = [];
 
     const dataPorUnidade = unidades.map(u => {
-      let uConforme = 0;
-      let uNaoConforme = 0;
+      let uConformeExtintores = 0;
+      let uNaoConformeExtintores = 0;
+      let uConformeHidrantes = 0;
+      let uNaoConformeHidrantes = 0;
 
       u.extintores.forEach(e => {
         const ultimaInspecao = e.inspecoes[0];
         if (ultimaInspecao) {
           if (ultimaInspecao.status === 'Conforme') {
-            uConforme++;
-            aprovados++;
+            uConformeExtintores++;
+            aprovadosExtintores++;
           } else {
-            uNaoConforme++;
-            reprovados++;
+            uNaoConformeExtintores++;
+            reprovadosExtintores++;
+            criticos.push({ tipo: 'Extintor', ...e });
           }
         } else {
-          // Se não tem inspeção, consideramos pendente/não conforme para fins de dashboard? 
-          // Ou apenas não somamos. Vamos somar como não conforme para alertar.
-          uNaoConforme++;
-          reprovados++;
+          uNaoConformeExtintores++;
+          reprovadosExtintores++;
+          criticos.push({ tipo: 'Extintor', ...e });
+        }
+      });
+
+      u.hidrantes.forEach(h => {
+        const ultimaInspecao = h.inspecoes[0];
+        if (ultimaInspecao) {
+          if (ultimaInspecao.status === 'Conforme') {
+            uConformeHidrantes++;
+            aprovadosHidrantes++;
+          } else {
+            uNaoConformeHidrantes++;
+            reprovadosHidrantes++;
+            criticos.push({ tipo: 'Hidrante', ...h });
+          }
+        } else {
+          uNaoConformeHidrantes++;
+          reprovadosHidrantes++;
+          criticos.push({ tipo: 'Hidrante', ...h });
         }
       });
 
       return {
         name: u.nome,
-        total: u.extintores.length,
-        conforme: uConforme,
-        naoConforme: uNaoConforme,
+        totalExtintores: u.extintores.length,
+        conformeExtintores: uConformeExtintores,
+        naoConformeExtintores: uNaoConformeExtintores,
+        totalHidrantes: u.hidrantes.length,
+        conformeHidrantes: uConformeHidrantes,
+        naoConformeHidrantes: uNaoConformeHidrantes,
       };
     });
 
     return {
       totalExtintores,
-      aprovados,
-      reprovados,
+      aprovadosExtintores,
+      reprovadosExtintores,
+      totalHidrantes,
+      aprovadosHidrantes,
+      reprovadosHidrantes,
       dataPorUnidade,
-      taxaEficiencia: totalExtintores > 0 ? Math.round((aprovados / totalExtintores) * 100) : 0
+      taxaEficienciaExtintores: totalExtintores > 0 ? Math.round((aprovadosExtintores / totalExtintores) * 100) : 0,
+      taxaEficienciaHidrantes: totalHidrantes > 0 ? Math.round((aprovadosHidrantes / totalHidrantes) * 100) : 0,
+      criticos,
     };
   } catch (error) {
     console.error('Error fetching dashboard data:', error);

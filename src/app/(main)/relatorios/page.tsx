@@ -342,6 +342,12 @@ export default function RelatoriosPage() {
               doc.text(`Data da Inspeção: ${new Date(insp.dataInspecao).toLocaleDateString('pt-BR')}`, 14, currentY)
               currentY += 6
 
+              if (tipoEquipamento === 'hidrantes' && insp.proximoTesteHidrostatico) {
+                doc.setFont("helvetica", "bold")
+                doc.text(`Próximo Teste Hidrostático: ${new Date(insp.proximoTesteHidrostatico).toLocaleDateString('pt-BR')}`, 14, currentY)
+                currentY += 6
+              }
+
               doc.setFontSize(9)
               doc.setFont("helvetica", "normal")
               doc.setTextColor(100, 116, 139)
@@ -381,8 +387,7 @@ export default function RelatoriosPage() {
                   { campo: 'semVazamentos', rotulo: 'Sem Vazamentos' },
                   { campo: 'valvulaFechada', rotulo: 'Válvula Fechada' },
                   { campo: 'temChaveStorz', rotulo: 'Tem Chave Storz' },
-                  { campo: 'estadoPintura', rotulo: 'Estado da Pintura' },
-                  { campo: 'proximoTesteHidrostatico', rotulo: 'Próximo Teste Hidrostático' }
+                  { campo: 'estadoPintura', rotulo: 'Estado da Pintura' }
                 ]
                 mapeamento.forEach(m => {
                   if (insp[m.campo] !== undefined && insp[m.campo] !== null) {
