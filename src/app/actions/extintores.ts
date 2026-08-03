@@ -129,7 +129,18 @@ export async function createInspecao(formData: FormData) {
       fotoUrl = await uploadImage(fileUri, 'inspecoes');
     }
 
-    await prisma.inspecaoExtintor.create({
+    // Lista de itens do checklist
+    const checklistItems = [
+      { id: 'sinalizacao', value: sinalizacao },
+      { id: 'manometro', value: manometro },
+      { id: 'lacre', value: lacre },
+      { id: 'mangueira', value: mangueira },
+      { id: 'pintura', value: pintura },
+      { id: 'seloInmetro', value: seloInmetro },
+    ];
+
+    // Criar inspeção com itens (fotos individuais por item)
+    const novaInspecao = await prisma.inspecaoExtintor.create({
       data: {
         extintorId,
         usuarioId,
@@ -143,11 +154,32 @@ export async function createInspecao(formData: FormData) {
         pintura,
         seloInmetro,
         dataInspecao,
+        itens: {
+          create: await Promise.all(
+            checklistItems.map(async (item) => {
+              let itemFotoUrl = null;
+              const fotoItem = formData.get(`foto_${item.id}`) as File | null;
+              if (fotoItem && fotoItem.size > 0) {
+                const itemArrayBuffer = await fotoItem.arrayBuffer();
+                const itemBuffer = Buffer.from(itemArrayBuffer);
+                const itemFileUri = `data:${fotoItem.type};base64,${itemBuffer.toString('base64')}`;
+                itemFotoUrl = await uploadImage(itemFileUri, 'inspecoes-items');
+              }
+              return {
+                itemId: item.id,
+                conforme: item.value,
+                foto: itemFotoUrl,
+              };
+            })
+          ),
+        },
       },
     });
 
     revalidatePath('/extintores');
     revalidatePath('/dashboard');
+    revalidatePath('/relatorios');
+    revalidatePath(`/extintores/historico/${extintorId}`);
     return { success: true };
   } catch (error) {
     console.error('Error creating inspecao:', error);
@@ -193,10 +225,7 @@ export async function getExtintores(userId?: string) {
       // Construir cláusula WHERE estrita
       whereClause = {
         unidadeId: { in: unidadesAcessoIds },
-        OR: [
-          { setorId: { in: setoresAcessoIds } },
-          { setorId: null }
-        ]
+        setorId: { in: setoresAcessoIds }
       };
     }
 
@@ -206,6 +235,9 @@ export async function getExtintores(userId?: string) {
         unidade: true,
         setor: true,
         inspecoes: {
+          include: {
+            itens: true,
+          },
           orderBy: { dataInspecao: 'desc' },
           take: 1,
         },
@@ -251,12 +283,13 @@ export async function getExtintorComHistorico(id: string, userId?: string) {
         return null;
       }
 
-      // Verificar acesso ao setor
-      if (extintor.setorId) {
-        const temAcessoSetor = setoresAcessoIds.includes(extintor.setorId);
-        if (!temAcessoSetor) {
-          return null;
-        }
+      // Verificar acesso ao setor (regra estrita - extintor deve ter setor e usuário deve ter acesso)
+      if (!extintor.setorId) {
+        return null;
+      }
+      const temAcessoSetor = setoresAcessoIds.includes(extintor.setorId);
+      if (!temAcessoSetor) {
+        return null;
       }
     }
 
@@ -269,6 +302,7 @@ export async function getExtintorComHistorico(id: string, userId?: string) {
         inspecoes: {
           include: {
             usuario: true,
+            itens: true,
           },
           orderBy: { dataInspecao: 'desc' },
         },
@@ -402,12 +436,12 @@ export async function getDashboardData() {
           } else {
             uNaoConformeExtintores++;
             reprovadosExtintores++;
-            criticos.push({ tipo: 'Extintor', ...e });
+            criticos.push({ ...e, tipo: 'Extintor' });
           }
         } else {
           uNaoConformeExtintores++;
           reprovadosExtintores++;
-          criticos.push({ tipo: 'Extintor', ...e });
+          criticos.push({ ...e, tipo: 'Extintor' });
         }
       });
 
@@ -489,6 +523,7 @@ export async function getRelatoriosExtintores(userId: string) {
         inspecoes: {
           include: {
             usuario: true,
+            itens: true,
           },
           orderBy: { dataInspecao: 'desc' },
         },

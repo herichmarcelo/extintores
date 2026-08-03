@@ -51,7 +51,8 @@ export default function HistoricoHidrantePage({ params }: { params: Promise<{ id
   const [isDeleting, setIsDeleting] = useState(false)
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
 
-  const canEdit = () => true // Lógica de permissão
+  const userProfile = (session?.user as any)?.perfil
+  const canEdit = () => userProfile === 'Administrador' || userProfile === 'Bombeiro'
 
   const toggleCard = (inspecaoId: string) => {
     setExpandedCards(prev => ({ ...prev, [inspecaoId]: !prev[inspecaoId] }))
@@ -79,6 +80,7 @@ export default function HistoricoHidrantePage({ params }: { params: Promise<{ id
     setIsSubmitting(true)
     
     const formData = new FormData(e.currentTarget)
+    const proximoTesteStr = formData.get('proximoTesteHidrostatico') as string | null
     const result = await updateInspecaoHidrante(editingInspecao.id, session.user.id, {
       status: formData.get('status') as string,
       observacao: formData.get('observacao') as string,
@@ -93,7 +95,7 @@ export default function HistoricoHidrantePage({ params }: { params: Promise<{ id
       valvulaFechada: formData.get('valvulaFechada') === 'on',
       temChaveStorz: formData.get('temChaveStorz') === 'on',
       estadoPintura: formData.get('estadoPintura') === 'on',
-      proximoTesteHidrostatico: formData.get('proximoTesteHidrostatico') === 'on',
+      proximoTesteHidrostatico: proximoTesteStr ? new Date(proximoTesteStr) : null,
     })
     
     if (result.success) {
@@ -326,16 +328,49 @@ export default function HistoricoHidrantePage({ params }: { params: Promise<{ id
                               
                               {/* Lista Vertical Limpa */}
                               <div className="space-y-3">
-                                {checklistItems.map(item => (
-                                  <div key={item.id} className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-slate-600">{item.label}</span>
-                                    {inspecao[item.id] ? (
-                                      <CheckCircle2 className="h-5 w-5 text-emerald-500 drop-shadow-sm" />
-                                    ) : (
-                                      <AlertCircle className="h-5 w-5 text-rose-500 drop-shadow-sm" />
-                                    )}
-                                  </div>
-                                ))}
+                                {checklistItems.map(item => {
+                                  // Buscar o item específico com foto
+                                  const itemFoto = inspecao.itens?.find((it: any) => it.itemId === item.id)
+                                  // Tratamento especial para proximoTesteHidrostatico (é DateTime)
+                                  const isCampoData = item.id === 'proximoTesteHidrostatico'
+                                  let statusItem = inspecao[item.id]
+                                  if (isCampoData && statusItem) {
+                                    statusItem = true // Existe data = passou
+                                  }
+                                  return (
+                                    <div key={item.id} className="space-y-3 pb-4 border-b border-slate-200 last:border-0 last:pb-0">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-sm font-medium text-slate-600">{item.label}</span>
+                                        {statusItem ? (
+                                          <div className="flex items-center gap-1 text-emerald-600 font-bold text-xs">
+                                            <CheckCircle2 className="h-5 w-5 text-emerald-500 drop-shadow-sm" />
+                                            {isCampoData ? new Date(inspecao[item.id]).toLocaleDateString('pt-BR') : 'Conforme'}
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center gap-1 text-rose-600 font-bold text-xs">
+                                            <AlertCircle className="h-5 w-5 text-rose-500 drop-shadow-sm" />
+                                            Não Conforme
+                                          </div>
+                                        )}
+                                      </div>
+                                      {/* Exibir foto da não conformidade abaixo do item */}
+                                      {itemFoto?.foto && (
+                                        <div className="pl-0">
+                                          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-1.5">
+                                            <Camera className="h-3.5 w-3.5" /> Evidência fotográfica
+                                          </p>
+                                          <div className="relative w-full h-48 rounded-2xl overflow-hidden border-2 border-slate-200 shadow-sm">
+                                            <img 
+                                              src={itemFoto.foto} 
+                                              alt={`Evidência - ${item.label}`} 
+                                              className="w-full h-full object-cover"
+                                            />
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })}
                               </div>
 
                               {inspecao.observacao && (
@@ -396,12 +431,21 @@ export default function HistoricoHidrantePage({ params }: { params: Promise<{ id
                 <div className="bg-white p-5 rounded-3xl shadow-sm space-y-4">
                   <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-4">Verificação Física</Label>
                   <div className="space-y-3">
-                    {checklistItems.map((item) => (
+                    {checklistItems.filter(item => item.id !== 'proximoTesteHidrostatico').map((item) => (
                       <label key={item.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors">
                         <span className="text-sm font-semibold text-slate-700">{item.label}</span>
                         <input type="checkbox" name={item.id} defaultChecked={editingInspecao[item.id]} className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-600" />
                       </label>
                     ))}
+                    <div className="flex flex-col p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                      <Label className="text-sm font-semibold text-slate-700 mb-2">Próximo Teste Hidrostático</Label>
+                      <Input
+                        type="date"
+                        name="proximoTesteHidrostatico"
+                        defaultValue={editingInspecao.proximoTesteHidrostatico ? new Date(editingInspecao.proximoTesteHidrostatico).toISOString().split('T')[0] : ''}
+                        className="h-12 rounded-xl bg-white border-slate-200"
+                      />
+                    </div>
                   </div>
                 </div>
                 

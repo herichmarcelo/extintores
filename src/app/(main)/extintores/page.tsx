@@ -86,7 +86,7 @@ export default function ExtintoresPage() {
 
   useEffect(() => {
     async function fetchData() {
-      if (status !== 'authenticated' || !session?.user?.id) return
+      if (status === 'loading' || !session?.user?.id) return;
       
       const unidadesData = await getUnidades()
       
@@ -100,13 +100,8 @@ export default function ExtintoresPage() {
       setLoading(false)
     }
     
-    if (status === 'loading') {
-      // Keep loading state
-      setLoading(true)
-    } else {
-      fetchData()
-    }
-  }, [status, session?.user?.id])
+    fetchData()
+  }, [status, session, session?.user?.id])
 
   useEffect(() => {
     let filtered = [...extintores]

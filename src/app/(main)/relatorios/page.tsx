@@ -361,43 +361,38 @@ export default function RelatoriosPage() {
 
               currentY += 2
               let checklistData: string[][] = []
-
-              if (tipoEquipamento === 'extintores') {
-                const mapeamento = [
-                  { campo: 'lacre', rotulo: 'Lacre Intacto' },
-                  { campo: 'manometro', rotulo: 'Pressão (Manômetro)' },
-                  { campo: 'sinalizacao', rotulo: 'Sinalização Visível' },
-                  { campo: 'mangueira', rotulo: 'Mangueira/Bico' },
-                  { campo: 'pintura', rotulo: 'Estado do Cilindro' }
-                ]
-                mapeamento.forEach(m => {
-                  if (insp[m.campo] !== undefined && insp[m.campo] !== null) {
-                    const isConforme = insp[m.campo] === true || insp[m.campo] === "Conforme" || insp[m.campo] === "Sim"
-                    checklistData.push([m.rotulo, isConforme ? 'OK' : 'Falha', isConforme ? 'Sim' : 'Não'])
-                  }
-                })
-              } else {
-                const mapeamento = [
-                  { campo: 'localAcessivel', rotulo: 'Local Acessível' },
-                  { campo: 'sinalizado', rotulo: 'Sinalizado' },
-                  { campo: 'estadoMangueiras', rotulo: 'Estado das Mangueiras' },
-                  { campo: 'enroladasCorretamente', rotulo: 'Enroladas Corretamente' },
-                  { campo: 'esguichosNoLocal', rotulo: 'Esguichos no Local' },
-                  { campo: 'esguichosBoasCondicoes', rotulo: 'Esguichos em Boas Condições' },
-                  { campo: 'semVazamentos', rotulo: 'Sem Vazamentos' },
-                  { campo: 'valvulaFechada', rotulo: 'Válvula Fechada' },
-                  { campo: 'temChaveStorz', rotulo: 'Tem Chave Storz' },
-                  { campo: 'estadoPintura', rotulo: 'Estado da Pintura' }
-                ]
-                mapeamento.forEach(m => {
-                  if (insp[m.campo] !== undefined && insp[m.campo] !== null) {
-                    const isConforme = insp[m.campo] === true || insp[m.campo] === "Conforme" || insp[m.campo] === "Sim"
-                    checklistData.push([m.rotulo, isConforme ? 'OK' : 'Falha', isConforme ? 'Sim' : 'Não'])
-                  }
-                })
-              }
+              const mapeamentoCompleto = tipoEquipamento === 'extintores'
+                ? [
+                    { campo: 'lacre', rotulo: 'Lacre Intacto' },
+                    { campo: 'manometro', rotulo: 'Pressão (Manômetro)' },
+                    { campo: 'sinalizacao', rotulo: 'Sinalização Visível' },
+                    { campo: 'mangueira', rotulo: 'Mangueira/Bico' },
+                    { campo: 'pintura', rotulo: 'Estado do Cilindro' },
+                    { campo: 'seloInmetro', rotulo: 'Selo do Inmetro' }
+                  ]
+                : [
+                    { campo: 'localAcessivel', rotulo: 'Local Acessível' },
+                    { campo: 'sinalizado', rotulo: 'Sinalizado' },
+                    { campo: 'estadoMangueiras', rotulo: 'Estado das Mangueiras' },
+                    { campo: 'enroladasCorretamente', rotulo: 'Enroladas Corretamente' },
+                    { campo: 'esguichosNoLocal', rotulo: 'Esguichos no Local' },
+                    { campo: 'esguichosBoasCondicoes', rotulo: 'Esguichos em Boas Condições' },
+                    { campo: 'semVazamentos', rotulo: 'Sem Vazamentos' },
+                    { campo: 'valvulaFechada', rotulo: 'Válvula Fechada' },
+                    { campo: 'temChaveStorz', rotulo: 'Tem Chave Storz' },
+                    { campo: 'estadoPintura', rotulo: 'Estado da Pintura' }
+                  ]
+              mapeamentoCompleto.forEach(m => {
+                if (insp[m.campo] !== undefined && insp[m.campo] !== null) {
+                  const isConforme = insp[m.campo] === true || insp[m.campo] === "Conforme" || insp[m.campo] === "Sim"
+                  checklistData.push([m.rotulo, isConforme ? 'OK' : 'Falha', isConforme ? 'Sim' : 'Não'])
+                }
+              })
 
               if (checklistData.length > 0) {
+                // =====================================================================
+                // 1) TABELA COMPLETA PRIMEIRO (igual ao print do usuário)
+                // =====================================================================
                 autoTable(doc, {
                   startY: currentY,
                   head: [['Parâmetro Avaliado', 'Laudo', 'Conformidade']],
@@ -410,42 +405,61 @@ export default function RelatoriosPage() {
                     }
                   }
                 })
-                currentY = (doc as any).lastAutoTable.finalY + 10
-              }
+                currentY = (doc as any).lastAutoTable.finalY + 8
 
-              const itemsComFoto = insp.checklist?.filter((c: any) => c.foto)
-              if (itemsComFoto && itemsComFoto.length > 0) {
-                doc.setFontSize(10)
-                doc.setTextColor(15, 23, 42)
-                doc.text("Anexos Fotográficos:", 14, currentY)
-                currentY += 8
-                for (const fotoItem of itemsComFoto) {
+                // =====================================================================
+                // 2) TODAS AS FOTOS/Evidências ABAIXO DA TABELA (igual ao print)
+                // =====================================================================
+                let temFotosIndividualizadas = false
+                for (const mapItem of mapeamentoCompleto) {
+                  const itemComFoto = insp.itens?.find((it: any) => it.itemId === mapItem.campo && it.foto)
+                  const fotoItemVelho = insp.checklist?.find((c: any) => c.pergunta === mapItem.rotulo && c.foto)
+                  const fotoParaExibir = itemComFoto?.foto || fotoItemVelho?.foto
+
+                  if (fotoParaExibir) {
+                    temFotosIndividualizadas = true
+                    const isConforme = insp[mapItem.campo] === true || insp[mapItem.campo] === "Conforme" || insp[mapItem.campo] === "Sim"
+                    if (currentY > 200) { doc.addPage(); currentY = 20; }
+                    doc.setFontSize(9)
+                    doc.setTextColor(15, 23, 42)
+                    doc.setFont("helvetica", "bold")
+                    // ✅ SEM EMOJI para não gerar Ø=Ü÷
+                    doc.text(`Evidencia: ${mapItem.rotulo}`, 14, currentY)
+                    currentY += 6
+                    try {
+                      let fotoB64 = fotoParaExibir
+                      if (fotoB64.startsWith('http') || fotoB64.startsWith('/')) fotoB64 = await loadImageAsBase64(fotoB64)
+                      if (fotoB64) {
+                        doc.addImage(fotoB64, 'JPEG', 14, currentY, 55, 55)
+                        if (!isConforme) {
+                          doc.setDrawColor(220, 38, 38)
+                          doc.setLineWidth(0.8)
+                          doc.rect(14, currentY, 55, 55, 'S')
+                        }
+                        currentY += 62
+                      }
+                    } catch (e) {
+                      doc.setTextColor(220, 38, 38)
+                      doc.text("[Erro na renderizacao da imagem]", 14, currentY); currentY += 10;
+                    }
+                  }
+                }
+
+                // Fallback: foto geral se não houver fotos individualizadas
+                if (!temFotosIndividualizadas && insp.foto) {
                   if (currentY > 210) { doc.addPage(); currentY = 20; }
-                  doc.setFontSize(8)
-                  doc.text(`Evidência: ${fotoItem.pergunta || 'Item'}`, 14, currentY)
-                  currentY += 4
+                  doc.setFontSize(10)
+                  doc.setTextColor(15, 23, 42)
+                  doc.text("Anexo Fotografico:", 14, currentY)
+                  currentY += 8
                   try {
-                    let fotoB64 = fotoItem.foto
+                    let fotoB64 = insp.foto
                     if (fotoB64.startsWith('http') || fotoB64.startsWith('/')) fotoB64 = await loadImageAsBase64(fotoB64)
                     if (fotoB64) { doc.addImage(fotoB64, 'JPEG', 14, currentY, 50, 50); currentY += 55; }
                   } catch (e) {
                     doc.setTextColor(220, 38, 38)
-                    doc.text("[Erro na renderização da imagem]", 14, currentY); currentY += 10;
+                    doc.text("[Erro na renderizacao da imagem]", 14, currentY); currentY += 10;
                   }
-                }
-              } else if (insp.foto) {
-                doc.setFontSize(10)
-                doc.setTextColor(15, 23, 42)
-                doc.text("Anexo Fotográfico:", 14, currentY)
-                currentY += 8
-                if (currentY > 210) { doc.addPage(); currentY = 20; }
-                try {
-                  let fotoB64 = insp.foto
-                  if (fotoB64.startsWith('http') || fotoB64.startsWith('/')) fotoB64 = await loadImageAsBase64(fotoB64)
-                  if (fotoB64) { doc.addImage(fotoB64, 'JPEG', 14, currentY, 50, 50); currentY += 55; }
-                } catch (e) {
-                  doc.setTextColor(220, 38, 38)
-                  doc.text("[Erro na renderização da imagem]", 14, currentY); currentY += 10;
                 }
               }
               currentY += 10 

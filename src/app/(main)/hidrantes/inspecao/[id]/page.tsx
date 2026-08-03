@@ -35,7 +35,9 @@ export default function InspecaoHidrantePage({ params }: { params: Promise<{ id:
   const [dataInspecao, setDataInspecao] = useState<Date | null>(new Date())
   const [proximoTesteHidrostatico, setProximoTesteHidrostatico] = useState<Date | null>(null)
 
+  // Estado para armazenar URL de preview e o File REAL de cada pergunta
   const [itemPhotos, setItemPhotos] = useState<Record<string, string>>({})
+  const [itemPhotoFiles, setItemPhotoFiles] = useState<Record<string, File>>({})
 
   useEffect(() => {
     async function loadData() {
@@ -47,16 +49,24 @@ export default function InspecaoHidrantePage({ params }: { params: Promise<{ id:
     loadData()
   }, [id, session?.user?.id])
 
+  // Gerencia o upload de fotos por item - GUARDA O FILE OBJETO REAL
   const handleItemPhotoChange = (itemId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       const url = URL.createObjectURL(file)
       setItemPhotos(prev => ({ ...prev, [itemId]: url }))
+      setItemPhotoFiles(prev => ({ ...prev, [itemId]: file })) // <- Chave da correção
     }
   }
 
+  // Remove a foto de um item específico
   const removeItemPhoto = (itemId: string) => {
     setItemPhotos(prev => {
+      const newState = { ...prev }
+      delete newState[itemId]
+      return newState
+    })
+    setItemPhotoFiles(prev => {
       const newState = { ...prev }
       delete newState[itemId]
       return newState
@@ -81,7 +91,10 @@ export default function InspecaoHidrantePage({ params }: { params: Promise<{ id:
       formData.append('proximoTesteHidrostatico', format(proximoTesteHidrostatico, 'yyyy-MM-dd'))
     }
     
-    const items = [
+    // ========================================================================
+    // 🔑 PONTO CRÍTICO DA CORREÇÃO: Anexar MANUALMENTE os arquivos File reais
+    // ========================================================================
+    const checklistIds = [
       'localAcessivel',
       'sinalizado',
       'estadoMangueiras',
@@ -93,7 +106,15 @@ export default function InspecaoHidrantePage({ params }: { params: Promise<{ id:
       'temChaveStorz',
       'estadoPintura'
     ]
-    const hasNonConformity = items.some(item => formData.get(item) === 'nao-conforme')
+    checklistIds.forEach(itemId => {
+      const file = itemPhotoFiles[itemId]
+      if (file) {
+        formData.delete(`foto_${itemId}`)
+        formData.append(`foto_${itemId}`, file, file.name || `${itemId}.jpg`)
+      }
+    })
+    
+    const hasNonConformity = checklistIds.some(item => formData.get(item) === 'nao-conforme')
     formData.append('status', hasNonConformity ? 'Não Conforme' : 'Conforme')
 
     const result = await createInspecaoHidrante(formData)

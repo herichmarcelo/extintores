@@ -163,6 +163,24 @@ model InspecaoExtintor {
 
   usuarioId String
   usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  itens InspecaoExtintorItem[]
+}
+
+model InspecaoExtintorItem {
+  id String @id @default(uuid())
+
+  inspecaoId String
+  inspecao   InspecaoExtintor @relation(fields: [inspecaoId], references: [id], onDelete: Cascade)
+
+  itemId    String // manometro, lacre, sinalizacao, mangueira, pintura, seloInmetro
+  conforme  Boolean
+  foto      String? // Foto da não conformidade deste item específico
+  observacao String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([inspecaoId, itemId])
 }
 
 model InspecaoHidrante {
@@ -190,4 +208,22 @@ model InspecaoHidrante {
 
   usuarioId String
   usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  itens InspecaoHidranteItem[]
+}
+
+model InspecaoHidranteItem {
+  id String @id @default(uuid())
+
+  inspecaoId String
+  inspecao   InspecaoHidrante @relation(fields: [inspecaoId], references: [id], onDelete: Cascade)
+
+  itemId    String
+  conforme  Boolean
+  foto      String?
+  observacao String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([inspecaoId, itemId])
 }

@@ -123,6 +123,19 @@ export async function createInspecaoHidrante(formData: FormData) {
       fotoUrl = await uploadImage(fileUri, 'inspecoes');
     }
 
+    const checklistItems = [
+      { id: 'localAcessivel', value: localAcessivel },
+      { id: 'sinalizado', value: sinalizado },
+      { id: 'estadoMangueiras', value: estadoMangueiras },
+      { id: 'enroladasCorretamente', value: enroladasCorretamente },
+      { id: 'esguichosNoLocal', value: esguichosNoLocal },
+      { id: 'esguichosBoasCondicoes', value: esguichosBoasCondicoes },
+      { id: 'semVazamentos', value: semVazamentos },
+      { id: 'valvulaFechada', value: valvulaFechada },
+      { id: 'temChaveStorz', value: temChaveStorz },
+      { id: 'estadoPintura', value: estadoPintura },
+    ];
+
     await prisma.inspecaoHidrante.create({
       data: {
         hidranteId,
@@ -142,11 +155,32 @@ export async function createInspecaoHidrante(formData: FormData) {
         temChaveStorz,
         estadoPintura,
         proximoTesteHidrostatico,
+        itens: {
+          create: await Promise.all(
+            checklistItems.map(async (item) => {
+              let itemFotoUrl = null;
+              const fotoItem = formData.get(`foto_${item.id}`) as File | null;
+              if (fotoItem && fotoItem.size > 0) {
+                const itemArrayBuffer = await fotoItem.arrayBuffer();
+                const itemBuffer = Buffer.from(itemArrayBuffer);
+                const itemFileUri = `data:${fotoItem.type};base64,${itemBuffer.toString('base64')}`;
+                itemFotoUrl = await uploadImage(itemFileUri, 'inspecoes-items');
+              }
+              return {
+                itemId: item.id,
+                conforme: item.value,
+                foto: itemFotoUrl,
+              };
+            })
+          ),
+        },
       },
     });
 
     revalidatePath('/hidrantes');
     revalidatePath('/dashboard');
+    revalidatePath('/relatorios');
+    revalidatePath(`/hidrantes/historico/${hidranteId}`);
     return { success: true };
   } catch (error) {
     console.error('Error creating inspecao hidrante:', error);
@@ -187,6 +221,9 @@ export async function getHidrantes(userId?: string) {
         unidade: true,
         setor: true,
         inspecoes: {
+          include: {
+            itens: true,
+          },
           orderBy: { dataInspecao: 'desc' },
           take: 1,
         },
@@ -245,6 +282,7 @@ export async function getHidranteComHistorico(id: string, userId?: string) {
         inspecoes: {
           include: {
             usuario: true,
+            itens: true,
           },
           orderBy: { dataInspecao: 'desc' },
         },
@@ -322,22 +360,7 @@ export async function deleteHidrante(id: string) {
   }
 }
 
-export async function updateInspecaoHidrante(inspecaoId: string, userId: string, data: {
-  status: string;
-  observacao?: string;
-  dataInspecao: Date;
-  localAcessivel: boolean;
-  sinalizado: boolean;
-  estadoMangueiras: boolean;
-  enroladasCorretamente: boolean;
-  esguichosNoLocal: boolean;
-  esguichosBoasCondicoes: boolean;
-  semVazamentos: boolean;
-  valvulaFechada: boolean;
-  temChaveStorz: boolean;
-  estadoPintura: boolean;
-  proximoTesteHidrostatico?: Date | null;
-}) {
+export async function updateInspecaoHidrante(inspecaoId: string, userId: string, data: any) {
   try {
     const user = await prisma.usuario.findUnique({
       where: { id: userId },
@@ -428,6 +451,7 @@ export async function getRelatoriosHidrantes(userId: string) {
         inspecoes: {
           include: {
             usuario: true,
+            itens: true,
           },
           orderBy: { dataInspecao: 'desc' },
         },
