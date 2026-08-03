@@ -408,9 +408,17 @@ export default function RelatoriosPage() {
                 currentY = (doc as any).lastAutoTable.finalY + 8
 
                 // =====================================================================
-                // 2) TODAS AS FOTOS/Evidências ABAIXO DA TABELA (igual ao print)
+                // 2) EVIDÊNCIAS EM GRADE 3 COLUNAS × 2 LINHAS (economiza papel!)
                 // =====================================================================
                 let temFotosIndividualizadas = false
+                const COL_COUNT = 3
+                const FOTO_W = 55
+                const FOTO_H = 55
+                const GAP_X = 7
+                const GAP_Y = 8
+                const ROW_H = FOTO_H + 14  // altura do rótulo + espaço + foto
+                let fotoCount = 0  // contador de fotos já renderizadas na grade
+
                 for (const mapItem of mapeamentoCompleto) {
                   const itemComFoto = insp.itens?.find((it: any) => it.itemId === mapItem.campo && it.foto)
                   const fotoItemVelho = insp.checklist?.find((c: any) => c.pergunta === mapItem.rotulo && c.foto)
@@ -419,30 +427,59 @@ export default function RelatoriosPage() {
                   if (fotoParaExibir) {
                     temFotosIndividualizadas = true
                     const isConforme = insp[mapItem.campo] === true || insp[mapItem.campo] === "Conforme" || insp[mapItem.campo] === "Sim"
-                    if (currentY > 200) { doc.addPage(); currentY = 20; }
-                    doc.setFontSize(9)
+
+                    const colIdx = fotoCount % COL_COUNT   // 0, 1, 2 → 0, 1, 2 ...
+                    const rowIdx = Math.floor(fotoCount / COL_COUNT) // 0, 0, 0 → 1, 1, 1 ...
+
+                    // Page break: se for começar uma nova linha e não couber na página
+                    if (colIdx === 0 && (currentY + ROW_H + GAP_Y) > 270) {
+                      doc.addPage()
+                      currentY = 20
+                    }
+
+                    const cellX = 14 + colIdx * (FOTO_W + GAP_X)
+                    const cellY = (colIdx === 0)
+                      ? currentY + (rowIdx > 0 ? GAP_Y : 0)
+                      : currentY  // mesma linha = mesmo Y base
+                    const rotuloY = cellY
+                    const fotoY = rotuloY + 8
+
+                    doc.setFontSize(8)
                     doc.setTextColor(15, 23, 42)
                     doc.setFont("helvetica", "bold")
-                    // ✅ SEM EMOJI para não gerar Ø=Ü÷
-                    doc.text(`Evidencia: ${mapItem.rotulo}`, 14, currentY)
-                    currentY += 6
+                    doc.text(`Evid. ${mapItem.rotulo}`, cellX, rotuloY)
+
                     try {
                       let fotoB64 = fotoParaExibir
                       if (fotoB64.startsWith('http') || fotoB64.startsWith('/')) fotoB64 = await loadImageAsBase64(fotoB64)
                       if (fotoB64) {
-                        doc.addImage(fotoB64, 'JPEG', 14, currentY, 55, 55)
+                        doc.addImage(fotoB64, 'JPEG', cellX, fotoY, FOTO_W, FOTO_H)
                         if (!isConforme) {
                           doc.setDrawColor(220, 38, 38)
                           doc.setLineWidth(0.8)
-                          doc.rect(14, currentY, 55, 55, 'S')
+                          doc.rect(cellX, fotoY, FOTO_W, FOTO_H, 'S')
                         }
-                        currentY += 62
                       }
                     } catch (e) {
                       doc.setTextColor(220, 38, 38)
-                      doc.text("[Erro na renderizacao da imagem]", 14, currentY); currentY += 10;
+                      doc.text("[Erro]", cellX, fotoY + 10)
                     }
+
+                    // Atualiza o currentY APENAS se for a última coluna (fechamos a linha)
+                    if (colIdx === COL_COUNT - 1) {
+                      currentY = fotoY + FOTO_H
+                    }
+
+                    fotoCount++
                   }
+                }
+
+                // Se sobrou foto que não fechou a última linha (ex: 4 fotos → 1ª linha 3, 2ª linha 1)
+                // garante que currentY esteja correto para o conteúdo seguinte
+                if (fotoCount % COL_COUNT !== 0) {
+                  currentY = currentY + FOTO_H + 8
+                } else if (fotoCount > 0) {
+                  currentY = currentY + 4
                 }
 
                 // Fallback: foto geral se não houver fotos individualizadas
