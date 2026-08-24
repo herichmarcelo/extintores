@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AuthSessionProvider from "@/components/SessionProvider";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,7 +22,17 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Bello Alimentos - Gestão de Extintores",
+    title: "Rota de Incêndio",
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
   },
 };
 
@@ -44,6 +55,7 @@ export default function RootLayout({
         <AuthSessionProvider>
           <TooltipProvider>
             {children}
+            <PWAInstallPrompt />
           </TooltipProvider>
         </AuthSessionProvider>
       </body>
