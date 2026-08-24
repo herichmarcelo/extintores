@@ -8,6 +8,23 @@ export async function createSetor(formData: FormData) {
   try {
     const nome = formData.get('nome') as string;
     const unidadeId = formData.get('unidadeId') as string;
+    const userId = formData.get('userId') as string;
+
+    // Verificar permissões do usuário
+    if (userId) {
+      const user = await prisma.usuario.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode criar setores - apenas leitura
+      if (user.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para criar setores. Acesso somente leitura.' };
+      }
+    }
 
     await prisma.setor.create({
       data: { nome, unidadeId },
@@ -29,6 +46,23 @@ export async function updateSetor(id: string, formData: FormData) {
   try {
     const nome = formData.get('nome') as string;
     const unidadeId = formData.get('unidadeId') as string;
+    const userId = formData.get('userId') as string;
+
+    // Verificar permissões do usuário
+    if (userId) {
+      const user = await prisma.usuario.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode editar setores - apenas leitura
+      if (user.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para editar setores. Acesso somente leitura.' };
+      }
+    }
 
     await prisma.setor.update({
       where: { id },
@@ -47,8 +81,24 @@ export async function updateSetor(id: string, formData: FormData) {
   }
 }
 
-export async function deleteSetor(id: string) {
+export async function deleteSetor(id: string, userId?: string) {
   try {
+    // Verificar permissões do usuário
+    if (userId) {
+      const user = await prisma.usuario.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode deletar setores - apenas leitura
+      if (user.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para deletar setores. Acesso somente leitura.' };
+      }
+    }
+
     const setor = await prisma.setor.findUnique({
       where: { id },
       include: {

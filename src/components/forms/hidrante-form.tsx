@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -42,6 +43,7 @@ interface HidranteFormProps {
 }
 
 export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setControlledOpen, trigger }: HidranteFormProps) {
+  const { data: session } = useSession()
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = controlledOpen !== undefined && setControlledOpen !== undefined
   const open = isControlled ? controlledOpen : internalOpen
@@ -91,6 +93,10 @@ export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setContr
     setIsSubmitting(true)
 
     const formData = new FormData(e.currentTarget)
+    // Adicionar userId para verificação de permissões
+    if (session?.user?.id) {
+      formData.append('userId', session.user.id)
+    }
     let result
 
     if (hidrante) {

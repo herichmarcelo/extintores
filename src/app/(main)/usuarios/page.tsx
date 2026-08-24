@@ -1,29 +1,30 @@
-"use client" 
+"use client"
 
-import { useState, useEffect } from "react" 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card" 
-import { Button } from "@/components/ui/button" 
-import { Input } from "@/components/ui/input" 
-import { Badge } from "@/components/ui/badge" 
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger, 
-} from "@/components/ui/dialog" 
+import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { 
-  Users, 
-  ShieldAlert, 
-  Search, 
-  Filter, 
-  UserPlus, 
-  Eye, 
-  ClipboardCheck, 
-  MoreVertical, 
+import {
+  Users,
+  ShieldAlert,
+  Search,
+  Filter,
+  UserPlus,
+  Eye,
+  ClipboardCheck,
+  MoreVertical,
   ShieldCheck,
   Loader2,
   Lock,
@@ -31,8 +32,8 @@ import {
   Trash2,
   Building2,
   DoorOpen
-} from "lucide-react" 
-import { motion } from "framer-motion" 
+} from "lucide-react"
+import { motion } from "framer-motion"
 import { getUsuarios, createUsuario, deleteUsuario, updateUsuario } from "@/app/actions/usuarios"
 import { getUnidades } from "@/app/actions/extintores"
 import { getSetores } from "@/app/actions/setores"
@@ -91,18 +92,19 @@ import { BottomNavigation } from "@/components/BottomNavigation"
    setoresAcesso: { setor: Setor }[]
  }
 
- export default function UsuariosPage() { 
-   const [openCreate, setOpenCreate] = useState(false) 
-   const [openEdit, setOpenEdit] = useState(false)
-   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null)
-   const [isSubmitting, setIsSubmitting] = useState(false) 
-   const [usuarios, setUsuarios] = useState<Usuario[]>([])
-   const [unidades, setUnidades] = useState<Unidade[]>([])
-   const [setores, setSetores] = useState<Setor[]>([])
-   const [isLoading, setIsLoading] = useState(true)
-   const [selectedUnidades, setSelectedUnidades] = useState<string[]>([])
-   const [selectedSetores, setSelectedSetores] = useState<string[]>([])
-   const [perfil, setPerfil] = useState<string>("")
+ export default function UsuariosPage() {
+  const { data: session } = useSession()
+  const [openCreate, setOpenCreate] = useState(false)
+  const [openEdit, setOpenEdit] = useState(false)
+  const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [usuarios, setUsuarios] = useState<Usuario[]>([])
+  const [unidades, setUnidades] = useState<Unidade[]>([])
+  const [setores, setSetores] = useState<Setor[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedUnidades, setSelectedUnidades] = useState<string[]>([])
+  const [selectedSetores, setSelectedSetores] = useState<string[]>([])
+  const [perfil, setPerfil] = useState<string>("")
 
    const loadData = async () => {
     setIsLoading(true)
@@ -121,13 +123,17 @@ import { BottomNavigation } from "@/components/BottomNavigation"
      loadData()
    }, [])
  
-   const handleCreateSubmit = async (e: React.FormEvent<HTMLFormElement>) => { 
-     e.preventDefault() 
-     setIsSubmitting(true) 
-     
+   const handleCreateSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+     e.preventDefault()
+     setIsSubmitting(true)
+
      const formData = new FormData(e.currentTarget)
      selectedUnidades.forEach(id => formData.append('unidadesIds', id))
      selectedSetores.forEach(id => formData.append('setoresIds', id))
+     // Adicionar creatorId para verificação de permissões
+     if (session?.user?.id) {
+       formData.append('creatorId', session.user.id)
+     }
      const result = await createUsuario(formData)
 
      if (result.success) {
@@ -142,14 +148,18 @@ import { BottomNavigation } from "@/components/BottomNavigation"
      setIsSubmitting(false)
    } 
 
-   const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => { 
-     e.preventDefault() 
+   const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+     e.preventDefault()
      if (!editingUsuario) return
-     setIsSubmitting(true) 
-     
+     setIsSubmitting(true)
+
      const formData = new FormData(e.currentTarget)
      selectedUnidades.forEach(id => formData.append('unidadesIds', id))
      selectedSetores.forEach(id => formData.append('setoresIds', id))
+     // Adicionar updaterId para verificação de permissões
+     if (session?.user?.id) {
+       formData.append('updaterId', session.user.id)
+     }
      const result = await updateUsuario(editingUsuario.id, formData)
 
      if (result.success) {
@@ -567,7 +577,7 @@ import { BottomNavigation } from "@/components/BottomNavigation"
                       className="h-10 w-10 rounded-xl hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
                       onClick={async () => {
                         if (confirm('Deseja realmente excluir este usuário?')) {
-                          await deleteUsuario(user.id);
+                          await deleteUsuario(user.id, session?.user?.id);
                           loadData();
                         }
                       }}

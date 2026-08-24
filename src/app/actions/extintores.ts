@@ -15,6 +15,23 @@ export async function createExtintor(formData: FormData) {
     const unidadeId = formData.get('unidadeId') as string;
     const setorId = formData.get('setorId') as string || null;
     const fotoFile = formData.get('foto') as File | null;
+    const userId = formData.get('userId') as string;
+
+    // Verificar permissões do usuário
+    if (userId) {
+      const user = await prisma.usuario.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode criar extintores - apenas leitura
+      if (user.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para criar extintores. Acesso somente leitura.' };
+      }
+    }
 
     // Check for duplicate code in the same unit
     const existingExtintor = await prisma.extintor.findFirst({
@@ -76,6 +93,11 @@ export async function createInspecao(formData: FormData) {
 
     if (!user) {
       return { success: false, error: 'Usuário não encontrado.' };
+    }
+
+    // Técnico de Segurança (Gestor) não pode criar inspeções - apenas leitura
+    if (user.perfil === 'Gestor') {
+      return { success: false, error: 'Técnico de Segurança não tem permissão para criar inspeções. Acesso somente leitura.' };
     }
 
     // Buscar o extintor para verificar acesso
@@ -222,11 +244,20 @@ export async function getExtintores(userId?: string) {
       const unidadesAcessoIds = user.unidadesAcesso.map(a => a.unidadeId);
       const setoresAcessoIds = user.setoresAcesso.map(a => a.setorId);
 
-      // Construir cláusula WHERE estrita
-      whereClause = {
-        unidadeId: { in: unidadesAcessoIds },
-        setorId: { in: setoresAcessoIds }
-      };
+      // Construir cláusula WHERE flexível - extintores da unidade OU dos setores específicos
+      if (setoresAcessoIds.length > 0) {
+        whereClause = {
+          OR: [
+            { unidadeId: { in: unidadesAcessoIds }, setorId: null },
+            { unidadeId: { in: unidadesAcessoIds }, setorId: { in: setoresAcessoIds } }
+          ]
+        };
+      } else {
+        // Se não tiver setores específicos, mostra todos da unidade
+        whereClause = {
+          unidadeId: { in: unidadesAcessoIds }
+        };
+      }
     }
 
     return await prisma.extintor.findMany({
@@ -278,19 +309,20 @@ export async function getExtintorComHistorico(id: string, userId?: string) {
 
       // Verificar acesso à unidade
       const temAcessoUnidade = unidadesAcessoIds.includes(extintor.unidadeId);
-      
+
       if (!temAcessoUnidade) {
         return null;
       }
 
-      // Verificar acesso ao setor (regra estrita - extintor deve ter setor e usuário deve ter acesso)
-      if (!extintor.setorId) {
-        return null;
+      // Verificar acesso ao setor (regra flexível)
+      if (extintor.setorId && setoresAcessoIds.length > 0) {
+        // Se o extintor tem setor e o usuário tem setores específicos configurados
+        const temAcessoSetor = setoresAcessoIds.includes(extintor.setorId);
+        if (!temAcessoSetor) {
+          return null;
+        }
       }
-      const temAcessoSetor = setoresAcessoIds.includes(extintor.setorId);
-      if (!temAcessoSetor) {
-        return null;
-      }
+      // Se o extintor não tiver setor ou o usuário não tiver setores específicos, permite acesso
     }
 
     // Se tudo ok (ou usuário admin), retornar o extintor com histórico
@@ -324,6 +356,23 @@ export async function updateExtintor(id: string, formData: FormData) {
     const unidadeId = formData.get('unidadeId') as string;
     const setorId = formData.get('setorId') as string || null;
     const fotoFile = formData.get('foto') as File | null;
+    const userId = formData.get('userId') as string;
+
+    // Verificar permissões do usuário
+    if (userId) {
+      const user = await prisma.usuario.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode editar extintores - apenas leitura
+      if (user.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para editar extintores. Acesso somente leitura.' };
+      }
+    }
 
     // Check for duplicate code in the same unit (excluding the current extintor)
     const existingExtintor = await prisma.extintor.findFirst({
@@ -371,8 +420,24 @@ export async function updateExtintor(id: string, formData: FormData) {
   }
 }
 
-export async function deleteExtintor(id: string) {
+export async function deleteExtintor(id: string, userId?: string) {
   try {
+    // Verificar permissões do usuário
+    if (userId) {
+      const user = await prisma.usuario.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode deletar extintores - apenas leitura
+      if (user.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para deletar extintores. Acesso somente leitura.' };
+      }
+    }
+
     await prisma.extintor.delete({
       where: { id },
     });
@@ -562,6 +627,11 @@ export async function updateInspecao(inspecaoId: string, userId: string, data: {
       return { success: false, error: 'Você não tem permissão para editar inspeções' };
     }
 
+    // Técnico de Segurança (Gestor) não pode editar inspeções - apenas leitura
+    if (user.perfil === 'Gestor') {
+      return { success: false, error: 'Técnico de Segurança não tem permissão para editar inspeções. Acesso somente leitura.' };
+    }
+
     await prisma.inspecaoExtintor.update({
       where: { id: inspecaoId },
       data: {
@@ -593,6 +663,11 @@ export async function deleteInspecao(inspecaoId: string, userId: string) {
     // Only allow Administrador or Bombeiro
     if (user.perfil !== 'Administrador' && user.perfil !== 'Bombeiro') {
       return { success: false, error: 'Você não tem permissão para deletar inspeções' };
+    }
+
+    // Técnico de Segurança (Gestor) não pode deletar inspeções - apenas leitura
+    if (user.perfil === 'Gestor') {
+      return { success: false, error: 'Técnico de Segurança não tem permissão para deletar inspeções. Acesso somente leitura.' };
     }
 
     await prisma.inspecaoExtintor.delete({

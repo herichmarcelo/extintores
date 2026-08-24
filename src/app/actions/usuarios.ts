@@ -27,6 +27,23 @@ export async function createUsuario(formData: FormData) {
     const perfil = formData.get('perfil') as string;
     const unidadesIds = formData.getAll('unidadesIds') as string[];
     const setoresIds = formData.getAll('setoresIds') as string[];
+    const creatorId = formData.get('creatorId') as string;
+
+    // Verificar permissões do criador
+    if (creatorId) {
+      const creator = await prisma.usuario.findUnique({
+        where: { id: creatorId },
+      });
+
+      if (!creator) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode criar usuários - apenas leitura
+      if (creator.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para criar usuários. Acesso somente leitura.' };
+      }
+    }
 
     // Verificar se o email já existe
     const existingUser = await prisma.usuario.findUnique({
@@ -68,8 +85,24 @@ export async function createUsuario(formData: FormData) {
   }
 }
 
-export async function deleteUsuario(id: string) {
+export async function deleteUsuario(id: string, deleterId?: string) {
   try {
+    // Verificar permissões do deletador
+    if (deleterId) {
+      const deleter = await prisma.usuario.findUnique({
+        where: { id: deleterId },
+      });
+
+      if (!deleter) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode deletar usuários - apenas leitura
+      if (deleter.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para deletar usuários. Acesso somente leitura.' };
+      }
+    }
+
     await prisma.usuario.delete({
       where: { id },
     });
@@ -89,6 +122,23 @@ export async function updateUsuario(id: string, formData: FormData) {
     const perfil = formData.get('perfil') as string;
     const unidadesIds = formData.getAll('unidadesIds') as string[];
     const setoresIds = formData.getAll('setoresIds') as string[];
+    const updaterId = formData.get('updaterId') as string;
+
+    // Verificar permissões do atualizador
+    if (updaterId) {
+      const updater = await prisma.usuario.findUnique({
+        where: { id: updaterId },
+      });
+
+      if (!updater) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode editar usuários - apenas leitura
+      if (updater.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para editar usuários. Acesso somente leitura.' };
+      }
+    }
 
     // Verificar se o email já existe em outro usuário
     const existingUser = await prisma.usuario.findFirst({

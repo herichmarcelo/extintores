@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DoorOpen, Flame, Plus, Loader2, Activity, ArrowLeft, Trash2, Pencil } from "lucide-react"
@@ -58,6 +59,7 @@ type SetorItem = {
 }
 
 export default function SetoresPage() {
+  const { data: session } = useSession()
   const params = useParams()
   const router = useRouter()
   const unidadeId = params.unidadeId as string
@@ -95,6 +97,10 @@ export default function SetoresPage() {
     setIsSubmitting(true)
     const formData = new FormData(e.currentTarget)
     formData.set("unidadeId", unidadeId)
+    // Adicionar userId para verificação de permissões
+    if (session?.user?.id) {
+      formData.append('userId', session.user.id)
+    }
     const result = await createSetor(formData)
     if (result.success) {
       setSetorOpen(false)
@@ -112,6 +118,10 @@ export default function SetoresPage() {
     setIsSubmitting(true)
     const formData = new FormData(e.currentTarget)
     formData.set("unidadeId", unidadeId)
+    // Adicionar userId para verificação de permissões
+    if (session?.user?.id) {
+      formData.append('userId', session.user.id)
+    }
     const result = await updateSetor(editingSetor.id, formData)
     if (result.success) {
       setEditOpen(false)
@@ -136,7 +146,7 @@ export default function SetoresPage() {
     if (!confirm(confirmacao)) return
 
     setDeletingSetorId(setor.id)
-    const result = await deleteSetor(setor.id)
+    const result = await deleteSetor(setor.id, session?.user?.id)
     if (result.success) {
       loadData()
     } else {

@@ -159,7 +159,7 @@ export default function ExtintoresPage() {
   const handleDelete = async () => {
     if (!deleteId) return
     setIsDeleting(true)
-    const result = await deleteExtintor(deleteId)
+    const result = await deleteExtintor(deleteId, session?.user?.id)
     if (result.success) {
       setExtintores(extintores.filter((e) => e.id !== deleteId))
       setDeleteDialogOpen(false)

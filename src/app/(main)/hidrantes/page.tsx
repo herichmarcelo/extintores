@@ -154,7 +154,7 @@ export default function HidrantesPage() {
   const handleDelete = async () => {
     if (!deleteId) return
     setIsDeleting(true)
-    const result = await deleteHidrante(deleteId)
+    const result = await deleteHidrante(deleteId, session?.user?.id)
     if (result.success) {
       setHidrantes(hidrantes.filter((h) => h.id !== deleteId))
       setDeleteDialogOpen(false)

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -46,6 +47,7 @@ interface ExtintorFormProps {
 }
 
 export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setControlledOpen, trigger }: ExtintorFormProps) {
+  const { data: session } = useSession()
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = controlledOpen !== undefined && setControlledOpen !== undefined
   const open = isControlled ? controlledOpen : internalOpen
@@ -105,6 +107,10 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
     const formData = new FormData(e.currentTarget)
     if (validadeCarga) {
       formData.append('validadeCarga', format(validadeCarga, 'yyyy-MM-dd'))
+    }
+    // Adicionar userId para verificação de permissões
+    if (session?.user?.id) {
+      formData.append('userId', session.user.id)
     }
     let result
 

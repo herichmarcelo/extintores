@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Building2, MapPin, Flame, Droplets, Plus, Loader2, Activity, Pencil, Trash2, DoorOpen } from "lucide-react"
@@ -52,6 +53,7 @@ type UnidadeItem = {
 }
 
 export default function UnidadesPage() {
+  const { data: session } = useSession()
   const [unidades, setUnidades] = useState<UnidadeItem[]>([])
   const [dbError, setDbError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -77,6 +79,10 @@ export default function UnidadesPage() {
     e.preventDefault()
     setIsSubmitting(true)
     const formData = new FormData(e.currentTarget)
+    // Adicionar userId para verificação de permissões
+    if (session?.user?.id) {
+      formData.append('userId', session.user.id)
+    }
     const result = await createUnidade(formData)
     if (result.success) {
       setOpen(false)
@@ -98,6 +104,10 @@ export default function UnidadesPage() {
 
     setIsSubmitting(true)
     const formData = new FormData(e.currentTarget)
+    // Adicionar userId para verificação de permissões
+    if (session?.user?.id) {
+      formData.append('userId', session.user.id)
+    }
     const result = await updateUnidade(editingUnidade.id, formData)
     if (result.success) {
       setEditOpen(false)
@@ -123,7 +133,7 @@ export default function UnidadesPage() {
     if (!confirm(mensagem)) return
 
     setDeletingId(unidade.id)
-    const result = await deleteUnidade(unidade.id)
+    const result = await deleteUnidade(unidade.id, session?.user?.id)
     if (result.success) {
       loadUnidades()
     } else {

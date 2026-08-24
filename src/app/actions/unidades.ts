@@ -9,6 +9,23 @@ export async function createUnidade(formData: FormData) {
     const nome = formData.get('nome') as string;
     const cidade = formData.get('cidade') as string;
     const estado = formData.get('estado') as string;
+    const userId = formData.get('userId') as string;
+
+    // Verificar permissões do usuário
+    if (userId) {
+      const user = await prisma.usuario.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode criar unidades - apenas leitura
+      if (user.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para criar unidades. Acesso somente leitura.' };
+      }
+    }
 
     await prisma.unidade.create({
       data: { nome, cidade, estado },
@@ -31,6 +48,23 @@ export async function updateUnidade(id: string, formData: FormData) {
     const nome = formData.get('nome') as string;
     const cidade = formData.get('cidade') as string;
     const estado = formData.get('estado') as string;
+    const userId = formData.get('userId') as string;
+
+    // Verificar permissões do usuário
+    if (userId) {
+      const user = await prisma.usuario.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode editar unidades - apenas leitura
+      if (user.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para editar unidades. Acesso somente leitura.' };
+      }
+    }
 
     await prisma.unidade.update({
       where: { id },
@@ -49,8 +83,24 @@ export async function updateUnidade(id: string, formData: FormData) {
   }
 }
 
-export async function deleteUnidade(id: string) {
+export async function deleteUnidade(id: string, userId?: string) {
   try {
+    // Verificar permissões do usuário
+    if (userId) {
+      const user = await prisma.usuario.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode deletar unidades - apenas leitura
+      if (user.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para deletar unidades. Acesso somente leitura.' };
+      }
+    }
+
     const unidade = await prisma.unidade.findUnique({
       where: { id },
       include: {

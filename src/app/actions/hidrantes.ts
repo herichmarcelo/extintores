@@ -12,6 +12,23 @@ export async function createHidrante(formData: FormData) {
     const unidadeId = formData.get('unidadeId') as string;
     const setorId = formData.get('setorId') as string || null;
     const fotoFile = formData.get('foto') as File | null;
+    const userId = formData.get('userId') as string;
+
+    // Verificar permissões do usuário
+    if (userId) {
+      const user = await prisma.usuario.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode criar hidrantes - apenas leitura
+      if (user.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para criar hidrantes. Acesso somente leitura.' };
+      }
+    }
 
     const existingHidrante = await prisma.hidrante.findFirst({
       where: {
@@ -68,6 +85,11 @@ export async function createInspecaoHidrante(formData: FormData) {
 
     if (!user) {
       return { success: false, error: 'Usuário não encontrado.' };
+    }
+
+    // Técnico de Segurança (Gestor) não pode criar inspeções - apenas leitura
+    if (user.perfil === 'Gestor') {
+      return { success: false, error: 'Técnico de Segurança não tem permissão para criar inspeções. Acesso somente leitura.' };
     }
 
     const hidrante = await prisma.hidrante.findUnique({
@@ -191,7 +213,7 @@ export async function createInspecaoHidrante(formData: FormData) {
 export async function getHidrantes(userId?: string) {
   try {
     if (!userId) return [];
-    
+
     let whereClause: any = {};
 
     const user = await prisma.usuario.findUnique({
@@ -206,13 +228,21 @@ export async function getHidrantes(userId?: string) {
       const unidadesAcessoIds = user.unidadesAcesso.map(a => a.unidadeId);
       const setoresAcessoIds = user.setoresAcesso.map(a => a.setorId);
 
-      whereClause = {
-        unidadeId: { in: unidadesAcessoIds },
-        OR: [
-          { setorId: { in: setoresAcessoIds } },
-          { setorId: null }
-        ]
-      };
+      // Construir cláusula WHERE flexível - hidrantes da unidade OU dos setores específicos
+      if (setoresAcessoIds.length > 0) {
+        whereClause = {
+          unidadeId: { in: unidadesAcessoIds },
+          OR: [
+            { setorId: { in: setoresAcessoIds } },
+            { setorId: null }
+          ]
+        };
+      } else {
+        // Se não tiver setores específicos, mostra todos da unidade
+        whereClause = {
+          unidadeId: { in: unidadesAcessoIds }
+        };
+      }
     }
 
     return await prisma.hidrante.findMany({
@@ -261,9 +291,17 @@ export async function getHidranteComHistorico(id: string, userId?: string) {
       }
 
       const temAcessoUnidade = unidadesAcessoIds.includes(hidrante.unidadeId);
-      
+
       if (!temAcessoUnidade) {
         return null;
+      }
+
+      // Se tiver setores específicos, verificar se o hidrante está em um setor permitido
+      if (setoresAcessoIds.length > 0 && hidrante.setorId) {
+        const temAcessoSetor = setoresAcessoIds.includes(hidrante.setorId);
+        if (!temAcessoSetor) {
+          return null;
+        }
       }
 
       if (hidrante.setorId) {
@@ -301,6 +339,23 @@ export async function updateHidrante(id: string, formData: FormData) {
     const unidadeId = formData.get('unidadeId') as string;
     const setorId = formData.get('setorId') as string || null;
     const fotoFile = formData.get('foto') as File | null;
+    const userId = formData.get('userId') as string;
+
+    // Verificar permissões do usuário
+    if (userId) {
+      const user = await prisma.usuario.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode editar hidrantes - apenas leitura
+      if (user.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para editar hidrantes. Acesso somente leitura.' };
+      }
+    }
 
     const existingHidrante = await prisma.hidrante.findFirst({
       where: {
@@ -344,8 +399,24 @@ export async function updateHidrante(id: string, formData: FormData) {
   }
 }
 
-export async function deleteHidrante(id: string) {
+export async function deleteHidrante(id: string, userId?: string) {
   try {
+    // Verificar permissões do usuário
+    if (userId) {
+      const user = await prisma.usuario.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return { success: false, error: 'Usuário não encontrado.' };
+      }
+
+      // Técnico de Segurança (Gestor) não pode deletar hidrantes - apenas leitura
+      if (user.perfil === 'Gestor') {
+        return { success: false, error: 'Técnico de Segurança não tem permissão para deletar hidrantes. Acesso somente leitura.' };
+      }
+    }
+
     await prisma.hidrante.delete({
       where: { id },
     });
@@ -372,6 +443,11 @@ export async function updateInspecaoHidrante(inspecaoId: string, userId: string,
 
     if (user.perfil !== 'Administrador' && user.perfil !== 'Bombeiro') {
       return { success: false, error: 'Você não tem permissão para editar inspeções' };
+    }
+
+    // Técnico de Segurança (Gestor) não pode editar inspeções - apenas leitura
+    if (user.perfil === 'Gestor') {
+      return { success: false, error: 'Técnico de Segurança não tem permissão para editar inspeções. Acesso somente leitura.' };
     }
 
     await prisma.inspecaoHidrante.update({
@@ -403,6 +479,11 @@ export async function deleteInspecaoHidrante(inspecaoId: string, userId: string)
 
     if (user.perfil !== 'Administrador' && user.perfil !== 'Bombeiro') {
       return { success: false, error: 'Você não tem permissão para deletar inspeções' };
+    }
+
+    // Técnico de Segurança (Gestor) não pode deletar inspeções - apenas leitura
+    if (user.perfil === 'Gestor') {
+      return { success: false, error: 'Técnico de Segurança não tem permissão para deletar inspeções. Acesso somente leitura.' };
     }
 
     await prisma.inspecaoHidrante.delete({
