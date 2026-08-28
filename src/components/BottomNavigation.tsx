@@ -3,7 +3,8 @@
 import { 
   LayoutDashboard, 
   Flame, 
-  Droplets, 
+  Droplets,
+  Siren,
   Building2, 
   FileText, 
   Users, 
@@ -17,10 +18,11 @@ const items = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Extintores", href: "/extintores", icon: Flame },
   { title: "Hidrantes", href: "/hidrantes", icon: Droplets },
+  { title: "Centrais", href: "/centrais", icon: Siren },
   { title: "Unidades", href: "/unidades", icon: Building2 },
   { title: "Relatórios", href: "/relatorios", icon: FileText },
   { title: "Usuários", href: "/usuarios", icon: Users },
-  { title: "Config.", href: "/configuracoes", icon: Settings }, // Abreviei para caber melhor
+  { title: "Config.", href: "/configuracoes", icon: Settings },
 ]
 
 export function BottomNavigation() {
