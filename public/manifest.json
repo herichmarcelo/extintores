@@ -4,7 +4,7 @@
   "description": "Sistema de gestão de extintores e hidrantes para inspeção de segurança",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#B11226",
   "theme_color": "#B11226",
   "orientation": "portrait",
   "scope": "/",
@@ -22,6 +22,7 @@
       "purpose": "any maskable"
     }
   ],
+  "splash_pages": null,
   "categories": ["business", "productivity", "utilities"],
   "shortcuts": [
     {

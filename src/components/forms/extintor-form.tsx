@@ -26,6 +26,7 @@ import { createExtintor, getUnidades, updateExtintor } from "@/app/actions/extin
 import { getSetores } from "@/app/actions/setores"
 import { DatePicker } from "@/components/date-picker"
 import { format } from "date-fns"
+import { compressImage } from "@/lib/compress-image"
 
 interface Extintor {
   id: string
@@ -44,9 +45,10 @@ interface ExtintorFormProps {
   open?: boolean
   setOpen?: (open: boolean) => void
   trigger?: React.ReactNode
+  onSuccess?: () => void
 }
 
-export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setControlledOpen, trigger }: ExtintorFormProps) {
+export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setControlledOpen, trigger, onSuccess }: ExtintorFormProps) {
   const { data: session } = useSession()
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = controlledOpen !== undefined && setControlledOpen !== undefined
@@ -55,6 +57,7 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [fotoFile, setFotoFile] = useState<File | null>(null)
   const [unidades, setUnidades] = useState<any[]>([])
   const [setores, setSetores] = useState<any[]>([])
   const [selectedUnidadeId, setSelectedUnidadeId] = useState<string>("")
@@ -63,13 +66,16 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
   const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
+    getUnidades().then((result) => setUnidades(result.data || []))
+    getSetores().then((result) => {
+      if (result.success) {
+        setSetores(result.data || [])
+      }
+    })
+  }, [])
+
+  useEffect(() => {
     if (open) {
-      getUnidades().then((result) => setUnidades(result.data))
-      getSetores().then((result) => {
-        if (result.success) {
-          setSetores(result.data)
-        }
-      })
       if (extintor?.foto) {
         setPreviewUrl(extintor.foto)
       }
@@ -86,16 +92,19 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
       }
     } else {
       setPreviewUrl(null)
+      setFotoFile(null)
       setValidadeCarga(null)
       setSelectedUnidadeId("")
       setSelectedSetorId("")
     }
   }, [open, extintor])
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const url = URL.createObjectURL(file)
+      const compressed = await compressImage(file)
+      setFotoFile(compressed)
+      const url = URL.createObjectURL(compressed)
       setPreviewUrl(url)
     }
   }
@@ -105,6 +114,9 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
     setIsSubmitting(true)
 
     const formData = new FormData(e.currentTarget)
+    if (fotoFile) {
+      formData.set('foto', fotoFile, fotoFile.name)
+    }
     if (validadeCarga) {
       formData.append('validadeCarga', format(validadeCarga, 'yyyy-MM-dd'))
     }
@@ -123,6 +135,8 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
     if (result.success) {
       setOpen(false)
       setPreviewUrl(null)
+      setFotoFile(null)
+      onSuccess?.()
     } else {
       alert(result.error)
     }
@@ -132,15 +146,13 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {trigger ? (
-        <DialogTrigger>{trigger}</DialogTrigger>
+        <DialogTrigger render={trigger as any} />
       ) : !extintor && (
-        <DialogTrigger>
-          <button
-            className="w-full bg-[#B11226] hover:bg-[#9a0f1f] text-white font-bold rounded-2xl h-12 shadow-sm transition-all flex items-center justify-center gap-2"
-          >
-            <Plus className="h-6 w-6" />
-            Novo Extintor
-          </button>
+        <DialogTrigger
+          className="w-full bg-[#B11226] hover:bg-[#9a0f1f] text-white font-bold rounded-2xl h-12 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <Plus className="h-6 w-6" />
+          Novo Extintor
         </DialogTrigger>
       )}
       <DialogContent className="sm:max-w-md rounded-2xl border-[#E5E7EB] shadow-lg p-6">
@@ -178,7 +190,10 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
                 name="unidadeId"
                 required
                 value={selectedUnidadeId}
-                onValueChange={setSelectedUnidadeId}
+                onValueChange={(val) => {
+                  setSelectedUnidadeId(val ?? "")
+                  setSelectedSetorId("")
+                }}
               >
                 <SelectTrigger className="h-11 rounded-xl border-[#E5E7EB] bg-slate-50 focus:border-[#B11226] focus:ring-1 focus:ring-[#B11226]/20">
                   <SelectValue placeholder="Selecione" />
@@ -201,7 +216,7 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
             <Label htmlFor="setorId" className="text-xs font-bold text-slate-600">
               Setor
             </Label>
-            <Select name="setorId" value={selectedSetorId} onValueChange={setSelectedSetorId}>
+            <Select name="setorId" value={selectedSetorId} onValueChange={(val) => setSelectedSetorId(val ?? "")}>
               <SelectTrigger className="h-11 rounded-xl border-[#E5E7EB] bg-slate-50 focus:border-[#B11226] focus:ring-1 focus:ring-[#B11226]/20">
                 <SelectValue placeholder="Selecione um setor (opcional)" />
               </SelectTrigger>
@@ -288,7 +303,7 @@ export function ExtintorForm({ extintor, open: controlledOpen, setOpen: setContr
                     <p className="text-xs text-slate-400 font-medium">Clique para adicionar</p>
                   </div>
                 )}
-                <input type="file" name="foto" className="hidden" accept="image/*" onChange={handleFileChange} />
+                <input type="file" name="foto" className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
               </label>
             </div>
           </div>

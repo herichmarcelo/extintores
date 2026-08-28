@@ -612,7 +612,7 @@ export default function RelatoriosPage() {
             {/* Novo filtro de tipo de equipamento */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-semibold text-zinc-600">Tipo de Equipamento</label>
-              <Select value={tipoEquipamento} onValueChange={(v: TipoEquipamento) => setTipoEquipamento(v)}>
+              <Select value={tipoEquipamento} onValueChange={(v) => v && setTipoEquipamento(v as TipoEquipamento)}>
                 <SelectTrigger className="w-full bg-white border-zinc-200 h-10 shadow-sm focus:ring-blue-500">
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
@@ -635,7 +635,7 @@ export default function RelatoriosPage() {
 
             <div className="space-y-1.5">
               <label className="text-[11px] font-semibold text-zinc-600">Unidade Base</label>
-              <Select value={filterUnidade} onValueChange={setFilterUnidade}>
+              <Select value={filterUnidade} onValueChange={(v) => setFilterUnidade(v ?? "todas")}>
                 <SelectTrigger className="w-full bg-white border-zinc-200 h-10 shadow-sm focus:ring-blue-500">
                   <SelectValue placeholder="Todas as unidades" />
                 </SelectTrigger>

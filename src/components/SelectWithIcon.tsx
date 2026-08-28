@@ -34,7 +34,7 @@ export function SelectWithIcon({
   focusColor = "red",
 }: SelectWithIconProps) {
   return (
-    <Select value={value} onValueChange={onValueChange}>
+    <Select value={value} onValueChange={(val) => onValueChange?.(val ?? "")}>
       <SelectTrigger 
         className={cn(
           // 1. Mudança principal: "flex items-center" garante o alinhamento vertical perfeito com os outros campos
@@ -55,7 +55,7 @@ export function SelectWithIcon({
         <InputContainer icon={icon} className="w-full h-full" focusColor={focusColor}>
           <div className="flex-1 flex items-center justify-between w-full pr-4">
             <SelectValue placeholder={placeholder}>
-              {(args) => (displayValue ? displayValue : args.children)}
+              {displayValue ? () => displayValue : undefined}
             </SelectValue>
             <ChevronDown className="h-4 w-4 text-slate-400 opacity-50" />
           </div>

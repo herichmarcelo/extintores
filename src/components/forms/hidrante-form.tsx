@@ -25,6 +25,7 @@ import { Camera, Loader2, Plus } from "lucide-react"
 import { createHidrante, updateHidrante } from "@/app/actions/hidrantes"
 import { getUnidades } from "@/app/actions/extintores"
 import { getSetores } from "@/app/actions/setores"
+import { compressImage } from "@/lib/compress-image"
 
 interface Hidrante {
   id: string
@@ -40,9 +41,10 @@ interface HidranteFormProps {
   open?: boolean
   setOpen?: (open: boolean) => void
   trigger?: React.ReactNode
+  onSuccess?: () => void
 }
 
-export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setControlledOpen, trigger }: HidranteFormProps) {
+export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setControlledOpen, trigger, onSuccess }: HidranteFormProps) {
   const { data: session } = useSession()
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = controlledOpen !== undefined && setControlledOpen !== undefined
@@ -51,19 +53,23 @@ export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setContr
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [fotoFile, setFotoFile] = useState<File | null>(null)
   const [unidades, setUnidades] = useState<any[]>([])
   const [setores, setSetores] = useState<any[]>([])
   const [selectedUnidadeId, setSelectedUnidadeId] = useState<string>("")
   const [selectedSetorId, setSelectedSetorId] = useState<string>("")
 
   useEffect(() => {
+    getUnidades().then((result) => setUnidades(result.data || []))
+    getSetores().then((result) => {
+      if (result.success) {
+        setSetores(result.data || [])
+      }
+    })
+  }, [])
+
+  useEffect(() => {
     if (open) {
-      getUnidades().then((result) => setUnidades(result.data))
-      getSetores().then((result) => {
-        if (result.success) {
-          setSetores(result.data)
-        }
-      })
       if (hidrante?.foto) {
         setPreviewUrl(hidrante.foto)
       }
@@ -75,15 +81,18 @@ export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setContr
       }
     } else {
       setPreviewUrl(null)
+      setFotoFile(null)
       setSelectedUnidadeId("")
       setSelectedSetorId("")
     }
   }, [open, hidrante])
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const url = URL.createObjectURL(file)
+      const compressed = await compressImage(file)
+      setFotoFile(compressed)
+      const url = URL.createObjectURL(compressed)
       setPreviewUrl(url)
     }
   }
@@ -93,6 +102,9 @@ export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setContr
     setIsSubmitting(true)
 
     const formData = new FormData(e.currentTarget)
+    if (fotoFile) {
+      formData.set('foto', fotoFile, fotoFile.name)
+    }
     // Adicionar userId para verificação de permissões
     if (session?.user?.id) {
       formData.append('userId', session.user.id)
@@ -108,6 +120,8 @@ export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setContr
     if (result.success) {
       setOpen(false)
       setPreviewUrl(null)
+      setFotoFile(null)
+      onSuccess?.()
     } else {
       alert(result.error)
     }
@@ -117,14 +131,10 @@ export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setContr
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {trigger ? (
-        <DialogTrigger>{trigger}</DialogTrigger>
+        <DialogTrigger render={trigger as any} />
       ) : !hidrante && (
         <DialogTrigger
-          render={
-            <Button
-              className="w-full bg-[#2979ff] hover:bg-[#2962ff] text-white font-bold rounded-2xl h-12 shadow-sm transition-all flex items-center justify-center gap-2"
-            />
-          }
+          className="w-full bg-[#2979ff] hover:bg-[#2962ff] text-white font-bold rounded-2xl h-12 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <Plus className="h-6 w-6" />
           Novo Hidrante
@@ -165,7 +175,10 @@ export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setContr
                 name="unidadeId"
                 required
                 value={selectedUnidadeId}
-                onValueChange={setSelectedUnidadeId}
+                onValueChange={(val) => {
+                  setSelectedUnidadeId(val ?? "")
+                  setSelectedSetorId("")
+                }}
               >
                 <SelectTrigger className="h-11 rounded-xl border-[#E5E7EB] bg-slate-50 focus:border-[#2979ff] focus:ring-1 focus:ring-[#2979ff]/20">
                   <SelectValue placeholder="Selecione" />
@@ -188,7 +201,7 @@ export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setContr
             <Label htmlFor="setorId" className="text-xs font-bold text-slate-600">
               Setor
             </Label>
-            <Select name="setorId" value={selectedSetorId} onValueChange={setSelectedSetorId}>
+            <Select name="setorId" value={selectedSetorId} onValueChange={(val) => setSelectedSetorId(val ?? "")}>
               <SelectTrigger className="h-11 rounded-xl border-[#E5E7EB] bg-slate-50 focus:border-[#2979ff] focus:ring-1 focus:ring-[#2979ff]/20">
                 <SelectValue placeholder="Selecione um setor (opcional)" />
               </SelectTrigger>
@@ -231,7 +244,7 @@ export function HidranteForm({ hidrante, open: controlledOpen, setOpen: setContr
                     <p className="text-xs text-slate-400 font-medium">Clique para adicionar</p>
                   </div>
                 )}
-                <input type="file" name="foto" className="hidden" accept="image/*" onChange={handleFileChange} />
+                <input type="file" name="foto" className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
               </label>
             </div>
           </div>

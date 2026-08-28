@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { DatePicker } from "@/components/date-picker"
 import { format } from "date-fns"
 import { BottomNavigation } from "@/components/BottomNavigation"
+import { compressImage } from "@/lib/compress-image"
 
 const container = {
   hidden: { opacity: 0 },
@@ -49,13 +50,14 @@ export default function InspecaoHidrantePage({ params }: { params: Promise<{ id:
     loadData()
   }, [id, session?.user?.id])
 
-  // Gerencia o upload de fotos por item - GUARDA O FILE OBJETO REAL
-  const handleItemPhotoChange = (itemId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  // Gerencia o upload de fotos por item - COMPRIME E GUARDA O FILE OBJETO REAL
+  const handleItemPhotoChange = async (itemId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const url = URL.createObjectURL(file)
+      const compressed = await compressImage(file)
+      const url = URL.createObjectURL(compressed)
       setItemPhotos(prev => ({ ...prev, [itemId]: url }))
-      setItemPhotoFiles(prev => ({ ...prev, [itemId]: file })) // <- Chave da correção
+      setItemPhotoFiles(prev => ({ ...prev, [itemId]: compressed }))
     }
   }
 
@@ -121,6 +123,7 @@ export default function InspecaoHidrantePage({ params }: { params: Promise<{ id:
 
     if (result.success) {
       router.push("/hidrantes")
+      router.refresh()
     } else {
       alert(result.error)
       setIsLoading(false)

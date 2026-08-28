@@ -20,6 +20,11 @@ import type { NextConfig } from "next";
  turbopack: {},
  // Permite acesso via IP local no desenvolvimento
  allowedDevOrigins: ['192.168.88.249', '127.0.0.1'],
+ experimental: {
+   serverActions: {
+     bodySizeLimit: '10mb',
+   },
+ },
 }; 
  
- export default withPWA(nextConfig); 
+ export default withPWA(nextConfig);

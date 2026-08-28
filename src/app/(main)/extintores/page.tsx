@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { getExtintores, deleteExtintor, getUnidades } from "@/app/actions/extintores"
 import { useSession } from "next-auth/react"
 import { 
@@ -84,24 +84,24 @@ export default function ExtintoresPage() {
     return unidade ? unidade.nome : "Todas as unidades"
   }
 
-  useEffect(() => {
-    async function fetchData() {
-      if (status === 'loading' || !session?.user?.id) return;
-      
-      const unidadesData = await getUnidades()
-      
-      setUnidades(unidadesData.data || [])
-      
-      // Fetch extintores with filtering on backend using real user ID
-      const extintoresData = await getExtintores(session.user.id)
-      
-      setExtintores(extintoresData as unknown as Extintor[])
-      setFilteredExtintores(extintoresData as unknown as Extintor[])
-      setLoading(false)
-    }
+  const fetchData = useCallback(async () => {
+    if (status === 'loading' || !session?.user?.id) return;
     
+    const unidadesData = await getUnidades()
+    
+    setUnidades(unidadesData.data || [])
+    
+    // Fetch extintores with filtering on backend using real user ID
+    const extintoresData = await getExtintores(session.user.id)
+    
+    setExtintores(extintoresData as unknown as Extintor[])
+    setFilteredExtintores(extintoresData as unknown as Extintor[])
+    setLoading(false)
+  }, [status, session?.user?.id])
+
+  useEffect(() => {
     fetchData()
-  }, [status, session, session?.user?.id])
+  }, [fetchData])
 
   useEffect(() => {
     let filtered = [...extintores]
@@ -228,7 +228,7 @@ export default function ExtintoresPage() {
 
           {/* NEW EXTINGUISHER BUTTON - FULL WIDTH */}
           <div className="mb-6">
-            <ExtintorForm />
+            <ExtintorForm onSuccess={fetchData} />
           </div>
 
           {/* KPIs 2x2 GRID */}
@@ -407,13 +407,14 @@ export default function ExtintoresPage() {
             </div>
             <div className="flex items-center gap-3">
               <Button
+                onClick={fetchData}
                 variant="ghost"
                 className="h-10 px-4 rounded-xl border border-[#E5E7EB] hover:bg-white hover:text-slate-900 font-medium"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Atualizar
               </Button>
-              <ExtintorForm />
+              <ExtintorForm onSuccess={fetchData} />
             </div>
           </div>
 
@@ -514,6 +515,7 @@ export default function ExtintoresPage() {
           extintor={editExtintor}
           open={!!editExtintor}
           setOpen={(open) => !open && setEditExtintor(null)}
+          onSuccess={fetchData}
         />
       )}
 

@@ -1,7 +1,7 @@
 "use client"
 
 export const dynamic = 'force-dynamic'
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { getHidrantes, deleteHidrante } from "@/app/actions/hidrantes"
 import { getUnidades } from "@/app/actions/extintores"
 import { useSession } from "next-auth/react"
@@ -82,27 +82,27 @@ export default function HidrantesPage() {
     return unidade ? unidade.nome : "Todas as unidades"
   }
 
-  useEffect(() => {
-    async function fetchData() {
-      if (status !== 'authenticated' || !session?.user?.id) return
-      
-      const unidadesData = await getUnidades()
-      
-      setUnidades(unidadesData.data || [])
-      
-      const hidrantesData = await getHidrantes(session.user.id)
-      
-      setHidrantes(hidrantesData as unknown as Hidrante[])
-      setFilteredHidrantes(hidrantesData as unknown as Hidrante[])
-      setLoading(false)
-    }
+  const fetchData = useCallback(async () => {
+    if (status !== 'authenticated' || !session?.user?.id) return
     
+    const unidadesData = await getUnidades()
+    
+    setUnidades(unidadesData.data || [])
+    
+    const hidrantesData = await getHidrantes(session.user.id)
+    
+    setHidrantes(hidrantesData as unknown as Hidrante[])
+    setFilteredHidrantes(hidrantesData as unknown as Hidrante[])
+    setLoading(false)
+  }, [status, session?.user?.id])
+
+  useEffect(() => {
     if (status === 'loading') {
       setLoading(true)
     } else {
       fetchData()
     }
-  }, [status, session?.user?.id])
+  }, [status, fetchData])
 
   useEffect(() => {
     let filtered = [...hidrantes]
@@ -223,7 +223,7 @@ export default function HidrantesPage() {
 
           {/* NEW HYDRANT BUTTON - FULL WIDTH */}
           <div className="mb-6">
-            <HidranteForm />
+            <HidranteForm onSuccess={fetchData} />
           </div>
 
           {/* KPIs 2x2 GRID */}
@@ -394,13 +394,14 @@ export default function HidrantesPage() {
             </div>
             <div className="flex items-center gap-3">
               <Button
+                onClick={fetchData}
                 variant="ghost"
                 className="h-10 px-4 rounded-xl border border-[#E5E7EB] hover:bg-white hover:text-slate-900 font-medium"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Atualizar
               </Button>
-              <HidranteForm />
+              <HidranteForm onSuccess={fetchData} />
             </div>
           </div>
 
@@ -498,6 +499,7 @@ export default function HidrantesPage() {
           hidrante={editHidrante}
           open={!!editHidrante}
           setOpen={(open) => !open && setEditHidrante(null)}
+          onSuccess={fetchData}
         />
       )}
 

@@ -6,7 +6,67 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+function extractItems(children: React.ReactNode): { value: any; label: React.ReactNode }[] {
+  const items: { value: any; label: React.ReactNode }[] = []
+
+  function extractText(node: React.ReactNode): string {
+    if (node == null || typeof node === "boolean") return ""
+    if (typeof node === "string" || typeof node === "number") return String(node)
+    if (Array.isArray(node)) return node.map(extractText).join("")
+    if (React.isValidElement(node)) {
+      const p = node.props as any
+      return extractText(p?.children)
+    }
+    return ""
+  }
+
+  function traverse(node: React.ReactNode) {
+    React.Children.forEach(node, (child) => {
+      if (!React.isValidElement(child)) return
+
+      const props = child.props as any
+      if (props) {
+        if (props.value !== undefined) {
+          let label = props.label
+          if (label === undefined) {
+            if (typeof props.children === "string" || typeof props.children === "number") {
+              label = props.children
+            } else {
+              const text = extractText(props.children).trim()
+              label = text || props.children
+            }
+          }
+          items.push({ value: props.value, label })
+        }
+
+        if (props.children) {
+          traverse(props.children)
+        }
+      }
+    })
+  }
+
+  traverse(children)
+  return items
+}
+
+function Select<Value = any, Multiple extends boolean | undefined = false>({
+  items,
+  children,
+  ...props
+}: SelectPrimitive.Root.Props<Value, Multiple>) {
+  const extractedItems = React.useMemo(() => {
+    if (items) return items
+    const extracted = extractItems(children)
+    return extracted.length > 0 ? extracted : undefined
+  }, [items, children])
+
+  return (
+    <SelectPrimitive.Root items={extractedItems} {...props}>
+      {children}
+    </SelectPrimitive.Root>
+  )
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
@@ -111,11 +171,13 @@ function SelectLabel({
 function SelectItem({
   className,
   children,
+  label,
   ...props
 }: SelectPrimitive.Item.Props) {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
+      label={label}
       className={cn(
         "relative flex w-full cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className
